@@ -3,7 +3,7 @@ from pyspark.sql import SparkSession
 
 
 class SharedSpark:
-    HOST = "spark://spark-master:7077"
+    HOST = "spark://spark-driver:7077"
 
     def __init__(self, app_name: str):
 
