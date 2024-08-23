@@ -55,7 +55,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 	def _ingest_bronze_daily(self):
 
 		df = self.spark.read.option("compression", "gzip") \
-			.text(f"{self.data_folder_path}/*.op.gz") \
+			.text(f"{self.data_folder_path}/*/*.op.gz") \
 			.filter(~col("value").like('STN%')) \
 			.withColumnRenamed("value", "v")
 
