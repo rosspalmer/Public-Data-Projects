@@ -25,7 +25,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 			.csv(f"{self.data_folder_path}/isd-history.csv")
 
 		df.write.mode("overwrite").format("delta") \
-			.saveAsTable("gson_bronze.isd_history")
+			.saveAsTable("gsod_bronze.isd_history")
 
 	def _generate_silver_stations(self):
 
@@ -48,7 +48,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
 		df.write.mode("overwrite").format("delta") \
 			.option("optimizeWrite", "True") \
-			.saveAsTable("gson_silver.stations")
+			.saveAsTable("gsod_silver.stations")
 
 	def _ingest_bronze_daily(self):
 
@@ -96,4 +96,4 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
 		df.write.mode("overwrite").format("delta") \
 			.option("optimizeWrite", "True") \
-			.saveAsTable("gson_bronze.daily")
+			.saveAsTable("gsod_bronze.daily")
