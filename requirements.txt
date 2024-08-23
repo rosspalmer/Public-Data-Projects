@@ -1,0 +1,5 @@
+pyspark==3.5.2
+py4j>=0.10.9.7
+pandas>=1.0.5
+pyarrow>=4.0.0,<13.0.0
+numpy>=1.15
