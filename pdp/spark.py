@@ -5,12 +5,12 @@ from pyspark.sql import SparkSession
 class SharedSpark:
     HOST = "spark://spark-master:7077"
 
-    def __init__(self):
+    def __init__(self, app_name: str):
 
         self.spark = (
            SparkSession.builder
            .master(SharedSpark.HOST)
-           .appName("ReadGSOP")
+           .appName(app_name)
            .config("spark.sql.warehouse.dir", "file:/mnt/lake-a/spark-warehouse")
            .enableHiveSupport()
            .getOrCreate()

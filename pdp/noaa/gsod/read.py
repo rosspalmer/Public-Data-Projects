@@ -7,7 +7,7 @@ from pdp.spark import SharedSpark
 class GlobalSurfaceSummaryOfDay(SharedSpark):
 
 	def __init__(self, data_folder_path: str):
-		super().__init__()
+		super().__init__("noaa-gsod")
 		self.data_folder_path = data_folder_path
 
 	def run(self):
@@ -17,6 +17,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
 		self._ingest_bronze_isd_history()
 		self._ingest_bronze_daily()
+		self._generate_silver_stations()
 
 	def _ingest_bronze_isd_history(self):
 
@@ -42,6 +43,8 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 				to_date("START", "yyyyMMdd").alias("start_service"),
 				to_date("END", "yyyyMMdd").alias("end_service")
 			)
+
+		# TODO fill in countries / states
 
 		df.write.mode("overwrite").format("delta") \
 			.option("optimizeWrite", "True") \
