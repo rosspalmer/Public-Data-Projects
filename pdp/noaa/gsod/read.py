@@ -49,9 +49,9 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 				col("CTRY").alias("country"),
 				col("STATE").alias("state"),
 				col("ICAO"),
-				col("LAT").cast("decimal<6, 3>").alias("latitude"),
-				col("LON").cast("decimal<6, 3>").alias("longitude"),
-				col("ELEV_M").cast("decimal<6, 1>").alias("elevation_meters"),
+				col("LAT").cast("decimal(6, 3)").alias("latitude"),
+				col("LON").cast("decimal(6, 3)").alias("longitude"),
+				col("ELEV_M").cast("decimal(6, 1)").alias("elevation_meters"),
 				to_date("BEGIN", "yyyyMMdd").alias("start_service"),
 				to_date("END", "yyyyMMdd").alias("end_service"),
 				location_udf("LAT", "LON").alias("location")
