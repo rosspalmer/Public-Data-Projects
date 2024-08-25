@@ -163,3 +163,5 @@ cython_debug/
 
 # Do not check in generated pdp library package
 pdp.zip
+dependencies/
+dependencies.zip
