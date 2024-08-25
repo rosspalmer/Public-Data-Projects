@@ -10,3 +10,4 @@ pushd dependencies
 popd
 
 spark-submit --py-files "pdp.zip,dependencies.zip,$DRIVER_PY" "$DRIVER_PY"
+
