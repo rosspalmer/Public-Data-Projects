@@ -35,7 +35,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 			.select(
 				col("USAF").alias("id_usaf"),
 				col("WBAN").alias("id_wban"),
-				col("STATION NAME").alias("name"),
+				col("STATION_NAME").alias("name"),
 				col("CTRY").alias("country"),
 				col("STATE").alias("state"),
 				col("ICAO"),
