@@ -33,10 +33,6 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
 	def _generate_silver_stations(self):
 
-		def location_func(lat, lon):
-			geolocator = Nominatim(user_agent="geoapiExercises")
-			loc = geolocator.reverse(f"{lat},{lon}")
-			return loc.raw['address']
 		location_udf = udf(location_func)
 
 		df = self.spark.table("gsod_bronze.isd_history") \
@@ -108,3 +104,8 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 		df.write.mode("overwrite").format("delta") \
 			.option("optimizeWrite", "True") \
 			.saveAsTable("gsod_bronze.daily")
+
+def location_func(lat, lon):
+	geolocator = Nominatim(user_agent="geoapiExercises")
+	loc = geolocator.reverse(f"{lat},{lon}")
+	return loc.raw['address']
