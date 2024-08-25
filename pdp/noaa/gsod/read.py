@@ -11,7 +11,6 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 	def __init__(self, data_folder_path: str):
 		super().__init__("noaa-gsod")
 		self.data_folder_path = data_folder_path
-		self.geolocator = Nominatim(user_agent="geoapiExercises")
 
 	def run(self):
 
@@ -35,7 +34,8 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 	def _generate_silver_stations(self):
 
 		def location_func(lat, lon):
-			loc = self.geolocator.reverse(f"{lat},{lon}")
+			geolocator = Nominatim(user_agent="geoapiExercises")
+			loc = geolocator.reverse(f"{lat},{lon}")
 			return loc.raw['address']
 		location_udf = udf(location_func)
 
