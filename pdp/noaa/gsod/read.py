@@ -1,5 +1,7 @@
 
-from pyspark.sql.functions import col, concat_ws, length, lit, regexp, to_date, when
+from geopy.geocoders import Nominatim
+
+from pyspark.sql.functions import col, concat_ws, length, lit, regexp, to_date, when, udf
 
 from pdp.spark import SharedSpark
 
@@ -9,6 +11,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 	def __init__(self, data_folder_path: str):
 		super().__init__("noaa-gsod")
 		self.data_folder_path = data_folder_path
+		self.geolocator = Nominatim(user_agent="geoapiExercises")
 
 	def run(self):
 
@@ -31,7 +34,13 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
 	def _generate_silver_stations(self):
 
+		def location_func(lat, lon):
+			loc = self.geolocator.reverse(f"{lat},{lon}")
+			return loc.raw['address']
+		location_udf = udf(location_func)
+
 		df = self.spark.table("gsod_bronze.isd_history") \
+			.limit(100) \
 			.select(
 				concat_ws("-", col("USAF"), col("WBAN")).alias("station_id"),
 				col("USAF").alias("id_usaf"),
@@ -44,10 +53,9 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 				col("LON").cast("decimal<6, 3>").alias("longitude"),
 				col("ELEV_M").cast("decimal<6, 1>").alias("elevation_meters"),
 				to_date("BEGIN", "yyyyMMdd").alias("start_service"),
-				to_date("END", "yyyyMMdd").alias("end_service")
+				to_date("END", "yyyyMMdd").alias("end_service"),
+				location_udf("LAT", "LON").alias("location")
 			)
-
-		# TODO fill in countries / states
 
 		df.write.mode("overwrite").format("delta") \
 			.option("optimizeWrite", "True") \
