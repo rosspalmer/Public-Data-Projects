@@ -9,4 +9,4 @@ popd dependencies
   zip -r ../dependencies.zip
 pushd
 
-spark-submit --py-files "pdp.zip,dependencies.zip,$DRIVER_PY" "$DRIVER"
+spark-submit --py-files "pdp.zip,dependencies.zip,$DRIVER_PY" "$DRIVER_PY"
