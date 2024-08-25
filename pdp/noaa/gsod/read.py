@@ -1,5 +1,5 @@
 
-from pyspark.sql.functions import col, length, lit, regexp, to_date, when
+from pyspark.sql.functions import col, concat_ws, length, lit, regexp, to_date, when
 
 from pdp.spark import SharedSpark
 
@@ -33,15 +33,16 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
 		df = self.spark.table("gsod_bronze.isd_history") \
 			.select(
+				concat_ws("-", col("USAF"), col("WBAN")).alias("station_id"),
 				col("USAF").alias("id_usaf"),
 				col("WBAN").alias("id_wban"),
 				col("STATION_NAME").alias("name"),
 				col("CTRY").alias("country"),
 				col("STATE").alias("state"),
 				col("ICAO"),
-				col("LAT").alias("lat"),
-				col("LON").alias("long"),
-				col("ELEV_M").alias("elevation_meters"),
+				col("LAT").cast("decimal<6, 3>").alias("latitude"),
+				col("LON").cast("decimal<6, 3>").alias("longitude"),
+				col("ELEV_M").cast("decimal<6, 1>").alias("elevation_meters"),
 				to_date("BEGIN", "yyyyMMdd").alias("start_service"),
 				to_date("END", "yyyyMMdd").alias("end_service")
 			)
