@@ -15,8 +15,8 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 		self.spark.sql("CREATE SCHEMA IF NOT EXISTS gsod_bronze").show()
 		self.spark.sql("CREATE SCHEMA IF NOT EXISTS gsod_silver").show()
 
-		self._ingest_bronze_isd_history()
-		self._ingest_bronze_daily()
+		# self._ingest_bronze_isd_history()
+		# self._ingest_bronze_daily()
 		self._generate_silver_stations()
 
 	def _ingest_bronze_isd_history(self):
