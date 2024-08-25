@@ -41,7 +41,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 				col("ICAO"),
 				col("LAT").alias("lat"),
 				col("LON").alias("long"),
-				col("ELEV(M)").alias("elevation_meters"),
+				col("ELEV_M").alias("elevation_meters"),
 				to_date("BEGIN", "yyyyMMdd").alias("start_service"),
 				to_date("END", "yyyyMMdd").alias("end_service")
 			)
