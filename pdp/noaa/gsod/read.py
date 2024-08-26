@@ -1,6 +1,10 @@
 
+from pprint import pprint
+from typing import List
+
 from geopy.geocoders import Nominatim
 
+from pyspark.sql import Row
 from pyspark.sql.functions import col, concat_ws, length, lit, regexp, to_date, when, udf
 
 from pdp.spark import SharedSpark
@@ -33,10 +37,8 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
 	def _generate_silver_stations(self):
 
-		location_udf = udf(location_func)
-
 		df = self.spark.table("gsod_bronze.isd_history") \
-			.limit(100) \
+			.limit(2000) \
 			.select(
 				concat_ws("-", col("USAF"), col("WBAN")).alias("station_id"),
 				col("USAF").alias("id_usaf"),
@@ -49,9 +51,25 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 				col("LON").cast("decimal(6, 3)").alias("longitude"),
 				col("ELEV_M").cast("decimal(6, 1)").alias("elevation_meters"),
 				to_date("BEGIN", "yyyyMMdd").alias("start_service"),
-				to_date("END", "yyyyMMdd").alias("end_service"),
-				location_udf("LAT", "LON").alias("location")
+				to_date("END", "yyyyMMdd").alias("end_service")
+			).persist()
+
+		lat_lon: List[Row] = df.select("station_id", "latitude", "longitude") \
+			.filter(col("latitude").isNotNull() & col("longitude").isNotNull()) \
+			.collect()
+
+		geolocator = Nominatim(user_agent="public-data-projects-gsod")
+
+		locations = []
+		for r in lat_lon:
+			locations.append(
+				{
+					"station_id": r.station_id,
+					"address": geolocator.reverse((r.latitude, r.longitude)).raw['address']
+				}
 			)
+
+		pprint(locations)
 
 		df.write.mode("overwrite").format("delta") \
 			.option("optimizeWrite", "True") \
@@ -105,8 +123,3 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 			.option("optimizeWrite", "True") \
 			.saveAsTable("gsod_bronze.daily")
 
-
-def location_func(lat, lon):
-	geolocator = Nominatim(user_agent="geoapiExercises")
-	loc = geolocator.reverse(f"{lat},{lon}")
-	return loc.raw['address']
