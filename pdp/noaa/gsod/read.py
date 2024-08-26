@@ -58,36 +58,22 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
         geocode = RateLimiter(geolocator.reverse, min_delay_seconds=1)
 
         # FIXME turn off row limits after testing
-        location: pd.DataFrame = df \
+        location: ps.DataFrame = ps.DataFrame(df \
             .filter(col("latitude").isNotNull() & col("longitude").isNotNull()) \
-            .limit(100) \
+            .limit(1000) \
             .select(
                 col("station_id"),
                 concat_ws(',', col("latitude"), col("longitude")).alias("coord")
-            ).toPandas()
+            ))
 
         location['address'] = location['coord'].apply(geocode) \
             .apply(lambda r: r.raw['address'] if r else None)
 
-        print(location)
+        df = df.join(location.to_spark(), "station_id")
 
-        # locations = []
-        # for r in lat_lon:
-        #
-        #     loc_match = geolocator.reverse((r.latitude, r.longitude))
-        #     if loc_match:
-        #         locations.append(
-        #             {
-        #                 "station_id": r.station_id,
-        #                 "address": geolocator.reverse((r.latitude, r.longitude)).raw['address']
-        #             }
-        #         )
-        #
-        # pprint(locations)
-        #
-        # df.write.mode("overwrite").format("delta") \
-        #     .option("optimizeWrite", "True") \
-        #     .saveAsTable("gsod_silver.stations")
+        df.write.mode("overwrite").format("delta") \
+            .option("optimizeWrite", "True") \
+            .saveAsTable("gsod_silver.stations")
 
     def _ingest_bronze_daily(self):
         df = self.spark.read.option("compression", "gzip") \
