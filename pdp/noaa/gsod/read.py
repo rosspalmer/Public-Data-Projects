@@ -60,7 +60,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
         # FIXME turn off row limits after testing
         location: pd.DataFrame = df \
             .filter(col("latitude").isNotNull() & col("longitude").isNotNull()) \
-            .limit(100) \
+            .limit(500) \
             .select(
                 col("station_id"),
                 concat_ws(',', col("latitude"), col("longitude")).alias("coord")
@@ -71,8 +71,9 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
         df = df.join(ps.DataFrame(location).to_spark(), "station_id")
 
-        df.write.mode("overwrite").format("delta") \
+        df.write.mode("append").format("delta") \
             .option("optimizeWrite", "True") \
+            .option("mergeSchema", True) \
             .saveAsTable("gsod_silver.stations")
 
     def _ingest_bronze_daily(self):
