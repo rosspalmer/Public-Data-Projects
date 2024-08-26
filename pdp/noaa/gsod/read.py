@@ -105,6 +105,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 			.option("optimizeWrite", "True") \
 			.saveAsTable("gsod_bronze.daily")
 
+
 def location_func(lat, lon):
 	geolocator = Nominatim(user_agent="geoapiExercises")
 	loc = geolocator.reverse(f"{lat},{lon}")
