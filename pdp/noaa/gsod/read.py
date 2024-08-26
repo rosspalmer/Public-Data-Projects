@@ -62,12 +62,16 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
 		locations = []
 		for r in lat_lon:
-			locations.append(
-				{
-					"station_id": r.station_id,
-					"address": geolocator.reverse((r.latitude, r.longitude)).raw['address']
-				}
-			)
+
+			loc_match = geolocator.reverse((r.latitude, r.longitude))
+			if loc_match:
+
+				locations.append(
+					{
+						"station_id": r.station_id,
+						"address": geolocator.reverse((r.latitude, r.longitude)).raw['address']
+					}
+				)
 
 		pprint(locations)
 
