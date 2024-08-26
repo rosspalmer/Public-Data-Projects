@@ -55,21 +55,21 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
         geolocator = Nominatim(
             user_agent="public-data-projects-gsod"
         )
-        geocode = RateLimiter(geolocator.reverse, min_delay_seconds=1)
+        geocode = RateLimiter(lambda x: geolocator.reverse(x, language="en"), min_delay_seconds=1)
 
         # FIXME turn off row limits after testing
-        location: ps.DataFrame = ps.DataFrame(df \
+        location: pd.DataFrame = df \
             .filter(col("latitude").isNotNull() & col("longitude").isNotNull()) \
-            .limit(1000) \
+            .limit(100) \
             .select(
                 col("station_id"),
                 concat_ws(',', col("latitude"), col("longitude")).alias("coord")
-            ))
+            ).toPandas()
 
         location['address'] = location['coord'].apply(geocode) \
             .apply(lambda r: r.raw['address'] if r else None)
 
-        df = df.join(location.to_spark(), "station_id")
+        df = df.join(ps.DataFrame(location).to_spark(), "station_id")
 
         df.write.mode("overwrite").format("delta") \
             .option("optimizeWrite", "True") \
