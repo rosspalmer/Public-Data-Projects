@@ -38,7 +38,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 	def _generate_silver_stations(self):
 
 		df = self.spark.table("gsod_bronze.isd_history") \
-			.limit(2000) \
+			.limit(10) \
 			.select(
 				concat_ws("-", col("USAF"), col("WBAN")).alias("station_id"),
 				col("USAF").alias("id_usaf"),
