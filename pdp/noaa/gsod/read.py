@@ -36,12 +36,21 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
             .saveAsTable("gsod_bronze.isd_history")
 
     def _generate_silver_stations(self):
-        df = self.spark.table("gsod_bronze.isd_history") \
-            .select(
-            concat_ws("-", col("USAF"), col("WBAN")).alias("station_id"),
+
+        isd_history = self.spark.table("gsod_bronze.isd_history") \
+            .withColumn("station_id", concat_ws("-", col("USAF"), col("WBAN")))
+
+        if self.spark.catalog.tableExists("gsod_silver.stations"):
+            isd_history = isd_history.join(
+                self.spark.table("gsod_silver.stations").select("station_id"),
+                "station_id", "leftanti"
+            )
+
+        df = isd_history.select(
+            col("station_id"),
             col("USAF").alias("id_usaf"),
             col("WBAN").alias("id_wban"),
-            col("STATION_NAME").alias("name"),
+            col("STATION_NAME").alias("station_name"),
             col("CTRY").alias("country"),
             col("STATE").alias("state"),
             col("ICAO"),
@@ -60,7 +69,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
         # FIXME turn off row limits after testing
         location: pd.DataFrame = df \
             .filter(col("latitude").isNotNull() & col("longitude").isNotNull()) \
-            .limit(500) \
+            .limit(1000) \
             .select(
                 col("station_id"),
                 concat_ws(',', col("latitude"), col("longitude")).alias("coord")
