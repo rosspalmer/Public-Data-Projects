@@ -24,7 +24,6 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
         # self._ingest_bronze_isd_history()
         # self._ingest_bronze_daily()
-        self._generate_silver_station_counts()
         self._generate_silver_stations()
 
     def _ingest_bronze_isd_history(self):
@@ -35,12 +34,6 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
         df.write.mode("overwrite").format("delta") \
             .saveAsTable("gsod_bronze.isd_history")
-
-    def _generate_silver_station_counts(self):
-
-        # df = self.spark.table("gsod_bronze.daily") \
-        #     .withColumn("s")
-        pass
 
     def _generate_silver_stations(self):
 
@@ -78,7 +71,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
         # FIXME turn off row limits after testing
         location: pd.DataFrame = df \
             .filter(col("latitude").isNotNull() & col("longitude").isNotNull()) \
-            .sample(0.05) \
+            .sample(0.1) \
             .select(
                 col("station_id"),
                 coord_udf(col("latitude"), col("longitude")).alias("coord")
