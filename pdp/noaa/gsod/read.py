@@ -64,7 +64,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
         geolocator = Nominatim(
             user_agent="public-data-projects-gsod"
         )
-        geocode = RateLimiter(lambda x: geolocator.reverse(x, language="en"), min_delay_seconds=1)
+        geocode = RateLimiter(lambda x: geolocator.reverse(x, language="en"), min_delay_seconds=0.75)
 
         # FIXME turn off row limits after testing
         location: pd.DataFrame = df \
