@@ -24,6 +24,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
         # self._ingest_bronze_isd_history()
         # self._ingest_bronze_daily()
+        self._generate_silver_station_counts()
         self._generate_silver_stations()
 
     def _ingest_bronze_isd_history(self):
@@ -34,6 +35,12 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
         df.write.mode("overwrite").format("delta") \
             .saveAsTable("gsod_bronze.isd_history")
+
+    def _generate_silver_station_counts(self):
+
+        # df = self.spark.table("gsod_bronze.daily") \
+        #     .withColumn("s")
+        pass
 
     def _generate_silver_stations(self):
 
@@ -66,14 +73,18 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
         )
         geocode = RateLimiter(lambda x: geolocator.reverse(x, language="en"), min_delay_seconds=1)
 
+        coord_udf = udf(lambda lat, lon: f'{lat:.3f},{lon:.3f}'.format(lat=lat,lon=lon))
+
         # FIXME turn off row limits after testing
         location: pd.DataFrame = df \
             .filter(col("latitude").isNotNull() & col("longitude").isNotNull()) \
-            .sample(0.05) \
+            .sample(0.01) \
             .select(
                 col("station_id"),
-                concat_ws(',', col("latitude"), col("longitude")).alias("coord")
+                coord_udf(col("latitude"), col("longitude")).alias("coord")
             ).toPandas()
+
+        print(location['coord'])
 
         location['address'] = location['coord'].apply(geocode) \
             .apply(lambda r: r.raw['address'] if r else None)
