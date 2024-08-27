@@ -69,7 +69,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
         # FIXME turn off row limits after testing
         location: pd.DataFrame = df \
             .filter(col("latitude").isNotNull() & col("longitude").isNotNull()) \
-            .limit(1000) \
+            .limit(5000) \
             .select(
                 col("station_id"),
                 concat_ws(',', col("latitude"), col("longitude")).alias("coord")
