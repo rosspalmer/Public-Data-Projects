@@ -150,7 +150,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
         df.write.mode("overwrite").format("delta") \
             .option("optimizeWrite", "True") \
-            .saveAsTable(self.STATIONS_SILVER)
+            .saveAsTable(self.DAILY_BRONZE)
 
     def _generate_silver_daily(self):
 
@@ -176,4 +176,4 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
         df.write.mode("overwrite").format("delta") \
             .option("optimizeWrite", "True") \
-            .saveAsTable(self.STATIONS_SILVER)
+            .saveAsTable(self.DAILY_SILVER)
