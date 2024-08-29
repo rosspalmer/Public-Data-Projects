@@ -39,11 +39,13 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
     def _ingest_bronze_stations(self):
 
-        df = self.spark.read.option("header", True) \
-            .csv(f"{self.data_folder_path}/isd-history.csv") \
-            .withColumnRenamed("STATION NAME", "STATION_NAME") \
-            .withColumnRenamed("ELEV(M)", "ELEV_M") \
-            .withColumn("station_id", concat_ws("-", col("USAF"), col("WBAN")))
+        df = (
+            self.spark.read.option("header", True)
+                .csv(f"{self.data_folder_path}/isd-history.csv")
+                .withColumnRenamed("STATION NAME", "STATION_NAME")
+                .withColumnRenamed("ELEV(M)", "ELEV_M")
+                .withColumn("station_id", concat_ws("-", col("USAF"), col("WBAN")))
+        )
 
         df.write.mode("overwrite").format("delta") \
             .saveAsTable(self.STATIONS_BRONZE)
