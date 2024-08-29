@@ -168,7 +168,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
         df = self.spark.table(self.DAILY_BRONZE) \
             .select(
                 col("station_id"),
-                to_date(concat_ws("-", "year", "month", "day")),
+                to_date(concat_ws("-", "year", "month", "day")).alias("date"),
                 col("temp").alias("avg_temperature_f"),
                 col("temp_count").alias("num_obs_temperature"),
                 col("max").alias("max_temperature_f"),
