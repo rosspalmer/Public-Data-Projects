@@ -18,38 +18,51 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
         super().__init__("noaa-gsod")
         self.data_folder_path = data_folder_path
 
+        self.SCHEMA = "gsod"
+        self.STATIONS_BRONZE = f"{self.schema('bronze')}.isd_history"
+        self.STATIONS_SILVER = f"{self.schema('silver')}.stations"
+        self.DAILY_BRONZE = f"{self.schema('bronze')}.daily"
+        self.DAILY_SILVER = f"{self.schema('silver')}.daily"
+
+    def schema(self, medallion: str):
+        return f"{self.SCHEMA}_{medallion}"
+
     def run(self):
-        self.spark.sql("CREATE SCHEMA IF NOT EXISTS gsod_bronze").show()
-        self.spark.sql("CREATE SCHEMA IF NOT EXISTS gsod_silver").show()
 
-        # self._ingest_bronze_isd_history()
+        for medallion in ['bronze', 'silver']:
+            self.spark.sql(f"CREATE SCHEMA IF NOT EXISTS {self.schema(medallion)}")
+
+        self._ingest_bronze_stations()
         # self._ingest_bronze_daily()
-        self._generate_silver_stations()
+        # self._generate_silver_stations()
 
-    def _ingest_bronze_isd_history(self):
+    def _ingest_bronze_stations(self):
+
         df = self.spark.read.option("header", True) \
             .csv(f"{self.data_folder_path}/isd-history.csv") \
             .withColumnRenamed("STATION NAME", "STATION_NAME") \
             .withColumnRenamed("ELEV(M)", "ELEV_M")
 
+        df.printSchema()
+
         df.write.mode("overwrite").format("delta") \
-            .saveAsTable("gsod_bronze.isd_history")
+            .saveAsTable(self.STATIONS_BRONZE)
 
     def _generate_silver_stations(self):
 
-        isd_history = self.spark.table("gsod_bronze.isd_history") \
+        isd_history = self.spark.table(self.STATIONS_BRONZE) \
             .withColumn("station_id", concat_ws("-", col("USAF"), col("WBAN")))
 
-        if self.spark.catalog.tableExists("gsod_silver.stations"):
+        if self.spark.catalog.tableExists(self.STATIONS_SILVER):
             isd_history = isd_history.join(
-                self.spark.table("gsod_silver.stations").select("station_id"),
+                self.spark.table(self.STATIONS_SILVER).select("station_id"),
                 "station_id", "leftanti"
             )
 
         df = isd_history.select(
             col("station_id"),
-            col("USAF").alias("id_usaf"),
-            col("WBAN").alias("id_wban"),
+            col("USAF").cast("string").alias("id_usaf"),
+            col("WBAN").cast("string").alias("id_wban"),
             col("STATION_NAME").alias("station_name"),
             col("CTRY").alias("country"),
             col("STATE").alias("state"),
@@ -87,9 +100,10 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
         df.write.mode("append").format("delta") \
             .option("optimizeWrite", "True") \
             .option("mergeSchema", True) \
-            .saveAsTable("gsod_silver.stations")
+            .saveAsTable(self.STATIONS_SILVER)
 
     def _ingest_bronze_daily(self):
+
         df = self.spark.read.option("compression", "gzip") \
             .text(f"{self.data_folder_path}/*/*.op.gz") \
             .filter(~col("value").like('STN%')) \
@@ -134,4 +148,12 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
         df.write.mode("overwrite").format("delta") \
             .option("optimizeWrite", "True") \
-            .saveAsTable("gsod_bronze.daily")
+            .saveAsTable(self.STATIONS_SILVER)
+
+    def _generate_silver_daily(self):
+
+        df = self.spark.table(self.DAILY_BRONZE) \
+            .select(
+                concat_ws("-", col("USAF"), col("WBAN")).alias("station_id")
+            )
+
