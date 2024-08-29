@@ -146,7 +146,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
             parse("frshtt", "string", 133, 6)
         )
 
-        df = df.select(concat_ws("-", col("USAF"), col("WBAN")).alias("station_id"))
+        df = df.select(concat_ws("-", col("stn"), col("wban")).alias("station_id"))
 
         df.write.mode("overwrite").format("delta") \
             .option("optimizeWrite", "True") \
