@@ -137,14 +137,14 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
             parse("wdsp", "decimal(4,1)", 79, 5),
             parse("wdsp_count", "int", 85, 2),
             parse("mxspd", "decimal(4,1)", 89, 5),
-            parse("gust", "float", 96, 5),
-            parse("max", "float", 103, 6),
+            parse("gust", "decimal(4,1)", 96, 5),
+            parse("max", "decimal(5,1)", 103, 6),
             parse("max_flag", "string", 109, 1),
-            parse("min", "float", 111, 6),
+            parse("min", "decimal(5,1)", 111, 6),
             parse("min_flag", "string", 117, 1),
-            parse("prcp", "float", 119, 5),
+            parse("prcp", "decimal(4,2)", 119, 5),
             parse("prcp_flag", "string", 124, 1),
-            parse("sndp", "float", 126, 5),
+            parse("sndp", "decimal(4,1)", 126, 5),
             parse("frshtt", "string", 133, 6)
         ).withColumn("station_id", concat_ws("-", "stn", "wban"))
 
@@ -153,6 +153,17 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
             .saveAsTable(self.DAILY_BRONZE)
 
     def _generate_silver_daily(self):
+
+        PRCP_CODES = {
+            "A": (6, 1), "B": (6, 2), "C": (6, 3), "D": (6, 4),
+            "E": (12, 1), "F": (12, 2), "G": (24, 1),
+            "H": (None, None)
+        }
+        prcp_report_hours_udf = udf(lambda x: PRCP_CODES[x][0])
+        prcp_num_reports_udf = udf(lambda x: PRCP_CODES[x][1])
+
+        def parse_indicators(idx: int):
+            return when(col("frshtt").substr(idx, 1) == "1", lit(True)).otherwise(lit(False))
 
         df = self.spark.table(self.DAILY_BRONZE) \
             .select(
@@ -171,7 +182,17 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
                 col("wdsp").alias("avg_wind_speed_kt"),
                 col("wdsp_count").alias("num_obs_wind_speed"),
                 col("mxspd").alias("max_wind_speed_kt"),
-                col("gust").alias("max_wind_gust_kt")
+                col("gust").alias("max_wind_gust_kt"),
+                col("prcp").alias("total_precipitation_in"),
+                prcp_report_hours_udf("prcp_flag").alias("precipitation_report_hours"),
+                prcp_num_reports_udf("prcp_flag").alias("num_precipitation_reports"),
+                col("sndp").alias("snow_depth_in"),
+                parse_indicators(1).alias("was_fog"),
+                parse_indicators(2).alias("was_rain"),
+                parse_indicators(3).alias("was_snow"),
+                parse_indicators(4).alias("was_hail"),
+                parse_indicators(5).alias("was_thunder"),
+                parse_indicators(6).alias("was_tornado")
             )
 
         df.write.mode("overwrite").format("delta") \
