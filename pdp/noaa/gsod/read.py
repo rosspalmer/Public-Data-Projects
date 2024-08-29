@@ -144,9 +144,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
             parse("prcp_flag", "string", 124, 1),
             parse("sndp", "float", 126, 5),
             parse("frshtt", "string", 133, 6)
-        )
-
-        df = df.select(concat_ws("-", col("stn"), col("wban")).alias("station_id"))
+        ).withColumn("station_id", concat_ws("-", "stn", "wban"))
 
         df.write.mode("overwrite").format("delta") \
             .option("optimizeWrite", "True") \
