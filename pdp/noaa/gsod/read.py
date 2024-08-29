@@ -32,9 +32,9 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
         for medallion in ['bronze', 'silver']:
             self.spark.sql(f"CREATE SCHEMA IF NOT EXISTS {self.schema(medallion)}")
 
-        self._ingest_bronze_stations()
+        # self._ingest_bronze_stations()
         # self._generate_silver_stations()
-        self._ingest_bronze_daily()
+        # self._ingest_bronze_daily()
         self._generate_silver_daily()
 
     def _ingest_bronze_stations(self):
