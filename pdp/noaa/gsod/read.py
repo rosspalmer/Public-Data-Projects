@@ -187,12 +187,12 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
                 prcp_report_hours_udf("prcp_flag").alias("precipitation_report_hours"),
                 prcp_num_reports_udf("prcp_flag").alias("num_precipitation_reports"),
                 col("sndp").alias("snow_depth_in"),
-                parse_indicators(1).alias("was_fog"),
-                parse_indicators(2).alias("was_rain"),
-                parse_indicators(3).alias("was_snow"),
-                parse_indicators(4).alias("was_hail"),
-                parse_indicators(5).alias("was_thunder"),
-                parse_indicators(6).alias("was_tornado")
+                parse_indicators(1).alias("had_fog"),
+                parse_indicators(2).alias("had_rain"),
+                parse_indicators(3).alias("had_snow"),
+                parse_indicators(4).alias("had_hail"),
+                parse_indicators(5).alias("had_thunder"),
+                parse_indicators(6).alias("had_tornado")
             )
 
         df.write.mode("overwrite").format("delta") \
