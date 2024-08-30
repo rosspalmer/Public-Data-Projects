@@ -157,7 +157,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
         PRCP_CODES = {
             "A": (6, 1), "B": (6, 2), "C": (6, 3), "D": (6, 4),
             "E": (12, 1), "F": (12, 2), "G": (24, 1),
-            "H": (None, None)
+            "H": (None, None), " ": (None, None)
         }
         prcp_report_hours_udf = udf(lambda x: PRCP_CODES[x][0])
         prcp_num_reports_udf = udf(lambda x: PRCP_CODES[x][1])
