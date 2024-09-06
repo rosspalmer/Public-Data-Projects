@@ -217,5 +217,5 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
             )
 
         monthly.write.mode("overwrite").format("delta") \
-            .option("mergeSchema", True) \
+            .option("optimizeWrite", "True") \
             .saveAsTable(self.MONTHLY_GOLD)
