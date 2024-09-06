@@ -85,6 +85,7 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
         location: pd.DataFrame = df \
             .filter(col("latitude").isNotNull() & col("longitude").isNotNull()) \
+            .sample(0.4) \
             .select(
                 col("station_id"),
                 coord_udf(col("latitude"), col("longitude")).alias("coord")
