@@ -7,7 +7,8 @@ from geopy.extra.rate_limiter import RateLimiter
 import pandas as pd
 import pyspark.pandas as ps
 from pyspark.sql import Row
-from pyspark.sql.functions import col, concat_ws, length, lit, regexp, to_date, when, udf
+from pyspark.sql.functions import avg, col, concat_ws, datepart, length, lit
+from pyspark.sql.functions import max, min, regexp, sum, to_date, when, udf
 
 from pdp.spark import SharedSpark
 
@@ -19,10 +20,11 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
         self.data_folder_path = data_folder_path
 
         self.SCHEMA = "gsod"
-        self.STATIONS_BRONZE = f"{self.schema('bronze')}.isd_history"
-        self.STATIONS_SILVER = f"{self.schema('silver')}.stations"
-        self.DAILY_BRONZE = f"{self.schema('bronze')}.daily"
-        self.DAILY_SILVER = f"{self.schema('silver')}.daily"
+        self.STATIONS_BRONZE = "gsod_bronze.isd_history"
+        self.STATIONS_SILVER = "gsod_silver.stations"
+        self.DAILY_BRONZE = "gsod_bronze.daily"
+        self.DAILY_SILVER = "gsod_silver.daily"
+        self.MONTHLY_GOLD = "gsod_gold.monthly"
 
     def schema(self, medallion: str):
         return f"{self.SCHEMA}_{medallion}"
@@ -33,9 +35,10 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
             self.spark.sql(f"CREATE SCHEMA IF NOT EXISTS {self.schema(medallion)}")
 
         # self._ingest_bronze_stations()
-        self._generate_silver_stations()
+        # self._generate_silver_stations()
         # self._ingest_bronze_daily()
         # self._generate_silver_daily()
+        self._generate_gold_monthly()
 
     def _ingest_bronze_stations(self):
 
@@ -196,3 +199,23 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
         df.write.mode("overwrite").format("delta") \
             .option("optimizeWrite", "True") \
             .saveAsTable(self.DAILY_SILVER)
+
+    def _generate_gold_monthly(self):
+
+        monthly = self.spark.table(self.DAILY_SILVER) \
+            .withColumn("year", datepart(lit('YEAR'), 'date')) \
+            .withColumn("month", datepart(lit('month'), 'date')) \
+            .groupBy("station_id", "year", "month") \
+            .agg(
+                avg("avg_temperature_f").alias("avg_daily_avg_temperature_f"),
+                avg("max_temperature_f").alias("avg_daily_max_temperature_f"),
+                max("max_temperature_f").alias("max_temperature_f"),
+                avg("min_temperature_f").alias("avg_daily_min_temperature_f"),
+                min("min_temperature_f").alias("min_temperature_f"),
+                sum("total_precipitation_in").alias("total_precipitation_in"),
+                avg("snow_depth_in").alias("avg_daily_snow_depth_in")
+            )
+
+        monthly.write.mode("overwrite").format("delta") \
+            .option("mergeSchema", True) \
+            .saveAsTable(self.MONTHLY_GOLD)
