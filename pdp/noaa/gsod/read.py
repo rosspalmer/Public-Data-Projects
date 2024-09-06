@@ -31,8 +31,8 @@ class GlobalSurfaceSummaryOfDay(SharedSpark):
 
     def run(self):
 
-        for medallion in ['bronze', 'silver']:
-            self.spark.sql(f"CREATE SCHEMA IF NOT EXISTS {self.schema(medallion)}")
+        for medallion in ['bronze', 'silver', 'gold']:
+            self.spark.sql(f"CREATE SCHEMA IF NOT EXISTS gsod_{medallion}")
 
         # self._ingest_bronze_stations()
         # self._generate_silver_stations()
