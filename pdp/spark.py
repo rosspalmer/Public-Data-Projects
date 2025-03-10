@@ -11,7 +11,7 @@ class SharedSpark:
            SparkSession.builder
            .master(SharedSpark.HOST)
            .appName(app_name)
-           .config("spark.sql.warehouse.dir", "file:/mnt/lake-a/spark-warehouse")
+           .config("spark.sql.warehouse.dir", "file:/mnt/lake-fs/spark-warehouse")
            .config("spark.databricks.delta.schema.autoMerge.enabled", True)
            .enableHiveSupport()
            .getOrCreate()
