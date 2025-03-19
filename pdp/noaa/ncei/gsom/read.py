@@ -95,10 +95,10 @@ class GlobalSummaryOfMonthParse(SparkJob):
         parsed_measurements = raw.select(select_measurements)
 
         transformed = DataSet([
-            DataTable("monthly_weather", parsed_measurements, "noaa_ncei"),
+            DataTable("global_monthly_weather", parsed_measurements, "noaa"),
             # TODO add measurement attributes table
         ])
 
 
     def write(self, data: DataSet):
-        data.write_all_tables()
+        data.write_all_tables("overwrite")
