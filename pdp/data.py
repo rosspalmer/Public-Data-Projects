@@ -27,8 +27,15 @@ class DataSet:
             raise KeyError(f"Table {name} not found")
         return table
 
-    def write_table(self, name: str):
-        pass
+    def write_table(self, name: str, mode: str):
+        df = self.get_table(name).df
+        print(f"Writing table ({mode}): {name}")
+        # TODO add delta writes once supported
+        df.write.mode(mode).saveAsTable(name)
+
+    def write_all_tables(self, mode: str):
+        for table_name in self.tables.keys():
+            self.write_table(table_name, mode)
 
 
 def merge_datasets(datasets: list[DataSet]) -> DataSet:
