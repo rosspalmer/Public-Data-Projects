@@ -29,7 +29,7 @@ class DataSet:
 
     def write_table(self, name: str, mode: str):
         df = self.get_table(name).df
-        print(f"Writing table ({mode}): {name}")
+        print(f"Writing table: {name} ({mode})")
         # TODO add delta writes once supported
         df.write.mode(mode).saveAsTable(name)
 

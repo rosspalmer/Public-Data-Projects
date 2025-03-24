@@ -25,9 +25,9 @@ class SparkJob(SharedSpark, ABC):
         pass
 
     def run(self):
-        read_db = self.read()
-        transform_db = self.transform(read_db)
+        read_dataset = self.read()
+        transform_dataset = self.transform(read_dataset)
         # Combine read data with transformed data in
         # case read data needs to be written
-        write_db = merge_datasets([read_db, transform_db])
+        write_db = merge_datasets([read_dataset, transform_dataset])
         self.write(write_db)

@@ -24,14 +24,14 @@ class GlobalSummaryOfMonthParse(SparkJob):
         ).persist()
 
         db = DataSet([
-            DataTable("raw_csv", data_files, "noaa_gsom")
+            DataTable("raw_monthly", data_files, "noaa")
         ])
 
         return db
 
     def transform(self, data: DataSet) -> DataSet:
 
-        raw = data.get_table("raw_csv")
+        raw = data.get_table("raw_monthly")
 
         id_columns = {
             "STATION": "ghcn_id",
@@ -82,23 +82,28 @@ class GlobalSummaryOfMonthParse(SparkJob):
             "DYTS": ("days_with_thunderstorm", "int")
         }
 
+        raw_columns = set(raw.df.columns)
+
         select_measurements = [
             F.col(k).alias(v) for k, v in id_columns.items()
         ] + [
             # Convert to date type using formatting specified above
-            F.to_date(F.col(k), v[1]).alias(v[0]) for k, v in date_columns.items()
+            F.to_date(F.col(k), v[1]).alias(v[0])
+            for k, v in date_columns.items() if k in raw_columns
         ] + [
             # Convert to type defined in section above and use long form name
-            F.col(k).cast(v[1]).alias(v[0]) for k, v in measurement_columns.items()
+            F.col(k).cast(v[1]).alias(v[0])
+            for k, v in measurement_columns.items() if k in raw_columns
         ]
 
-        parsed_measurements = raw.select(select_measurements)
+        parsed_measurements = raw.df.select(select_measurements)
 
         transformed = DataSet([
             DataTable("global_monthly_weather", parsed_measurements, "noaa"),
             # TODO add measurement attributes table
         ])
 
+        return transformed
 
     def write(self, data: DataSet):
         data.write_all_tables("overwrite")

@@ -4,3 +4,4 @@ pandas>=1.0.5
 pyarrow>=4.0.0,<13.0.0
 numpy>=1.15
 geopy
+reverse-geocode
