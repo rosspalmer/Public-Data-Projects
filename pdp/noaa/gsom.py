@@ -1,6 +1,7 @@
 
 import pyspark.sql.functions as F
 from pyspark.sql.column import Column
+from pyspark.sql.window import Window
 
 from pdp.data import DataSet, DataTable
 from pdp.job import SparkJob
@@ -41,7 +42,7 @@ class GlobalSummaryOfMonthParse(SparkJob):
         }
 
         date_columns = {
-            # "DATE": ("date_month_start", "YYYY-MM"),
+            "DATE": ("date_month_start", "yyyy-MM"),
             "DYNT": ("date_of_extreme_minimum", "yyyyMMdd", "a,S"),
             "DYXT": ("date_of_extreme_maximum", "yyyyMMdd", "a,S"),
             "DYSD": ("date_of_max_snow_depth", "yyyyMMdd", "a,S"),
@@ -84,10 +85,15 @@ class GlobalSummaryOfMonthParse(SparkJob):
             "DYTS": ("days_with_thunderstorm", "int")
         }
 
+        measurement_column_names = [x[0] for x in measurement_columns.values()]
+
         raw_columns = set(raw.df.columns)
 
         select_measurements = [
             F.col(k).alias(v) for k, v in id_columns.items()
+        ] + [
+            F.col("DATE").substr(0, 4).alias("year"),
+            F.col("DATE").substr(6, 2).alias("month")
         ] + [
             # Convert to date type using formatting specified above
             F.to_date(F.col(k), v[1]).alias(v[0])
@@ -98,12 +104,26 @@ class GlobalSummaryOfMonthParse(SparkJob):
             for k, v in measurement_columns.items() if k in raw_columns
         ]
 
-        parsed_measurements = raw.df.select(select_measurements)
+        measurements = raw.df.select(select_measurements).persist()
+
+        years_lookback =  [3, 5, 10]
+        grouping_window = Window().partitionBy("ghcn_id", "month").orderBy("year")
+        trend_windows = {n: grouping_window.rowsBetween(-(n-1), 0) for n in years_lookback}
+        trend_columns = {
+            n: [F.col("ghcn_id"), F.col("month_id"), F.col("date_month_start")] +
+               [F.avg(c).over(w).alias(c) for c in measurement_column_names]
+            for n, w in trend_windows.items()
+        }
+
+        trend_tables = [
+            DataTable(f'global_monthly_weather_avg_{n}', measurements.select(cols), "noaa")
+            for n, cols in trend_columns.items()
+        ]
 
         transformed = DataSet([
-            DataTable("global_monthly_weather", parsed_measurements, "noaa"),
+            DataTable("global_monthly_weather", measurements, "noaa"),
             # TODO add measurement attributes table
-        ])
+        ] + trend_tables)
 
         return transformed
 
