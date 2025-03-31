@@ -34,7 +34,8 @@ class SurfaceWeatherStations(SparkJob):
     def transform(self, data: DataSet) -> DataSet:
 
         def lookup_map(lat: float, long: float) -> dict:
-            return reverse_geocode.search((lat, long))
+            coordinates = lat, long
+            return reverse_geocode.search(coordinates)
         lookup_udf = F.udf(lookup_map)
 
         raw = data.get_table("raw_global_stations").df
