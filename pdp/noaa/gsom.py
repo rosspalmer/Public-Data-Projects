@@ -85,9 +85,8 @@ class GlobalSummaryOfMonthParse(SparkJob):
             "DYTS": ("days_with_thunderstorm", "int")
         }
 
-        measurement_column_names = [x[0] for x in measurement_columns.values()]
-
         raw_columns = set(raw.df.columns)
+        measurement_column_names = [v[0] for k,v in measurement_columns.items() if k in raw_columns]
 
         select_measurements = [
             F.col(k).alias(v) for k, v in id_columns.items()
