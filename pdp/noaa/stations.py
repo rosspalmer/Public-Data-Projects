@@ -51,6 +51,7 @@ class SurfaceWeatherStations(SparkJob):
                 F.col("lat"), F.col("long"), F.col("elevation"),
                 F.explode("lookup")
             )
+        )
 
         return DataSet([
             DataTable("global_stations", with_geo_data, "noaa")
