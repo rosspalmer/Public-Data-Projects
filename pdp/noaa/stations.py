@@ -1,6 +1,10 @@
 from pdp.data import DataSet, DataTable
 from pdp.job import SparkJob
 
+import pyspark.sql.functions as F
+
+import reverse_geocode
+
 
 class SurfaceWeatherStations(SparkJob):
 
@@ -24,14 +28,30 @@ class SurfaceWeatherStations(SparkJob):
         raw.show()
 
         return DataSet([
-            DataTable("raw_stations", raw, "noaa")
+            DataTable("raw_global_stations", raw, "noaa")
         ])
 
     def transform(self, data: DataSet) -> DataSet:
 
-        raw = data.get_table("raw_stations")
+        def lookup_map(lat: float, long: float) -> dict:
+            return reverse_geocode.search((lat, long))
+        lookup_udf = F.udf(lookup_map)
 
-        return data
+        raw = data.get_table("raw_global_stations").df
+
+        with_geo_data = (
+            raw
+            .withColumn("lookup", lookup_udf("lat", "long"))
+            .select(
+                F.col("ghcn_id"), F.col("wmo_id"), F.col("name"),
+                F.col("lat"), F.col("long"), F.col("elevation"),
+                F.explode("lookup")
+            )
+        )
+
+        return DataSet([
+            DataTable("global_stations", with_geo_data, "noaa")
+        ])
 
     def write(self, data: DataSet):
-        pass
+        data.write_all_tables("overwrite")
