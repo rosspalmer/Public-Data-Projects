@@ -2,6 +2,7 @@ from pdp.data import DataSet, DataTable
 from pdp.job import SparkJob
 
 import pyspark.sql.functions as F
+from pyspark.sql.types import *
 
 import reverse_geocode
 
@@ -38,7 +39,7 @@ class SurfaceWeatherStations(SparkJob):
         def lookup_map(lat: float, long: float) -> dict:
             coordinates = lat, long
             return reverse_geocode.get(coordinates)
-        lookup_udf = F.udf(lookup_map)
+        lookup_udf = F.udf(lookup_map, MapType(StringType(), StringType()))
 
         raw = data.get_table("raw_global_stations").df
 
@@ -48,7 +49,7 @@ class SurfaceWeatherStations(SparkJob):
             .select(
                 F.col("ghcn_id"), F.col("wmo_id"), F.col("name"),
                 F.col("lat"), F.col("long"), F.col("elevation"),
-                F.col("lookup")            )
+                F.col("lookup"))
         )
 
         return DataSet([
