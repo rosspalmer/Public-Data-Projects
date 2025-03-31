@@ -1,6 +1,9 @@
 
+import os
+
 import pyspark.sql.functions as F
 from pyspark.sql.column import Column
+from pyspark.sql.types import StructType
 from pyspark.sql.window import Window
 
 from pdp.data import DataSet, DataTable
@@ -15,19 +18,23 @@ class GlobalSummaryOfMonthParse(SparkJob):
 
     def read(self) -> DataSet:
 
-        data_files = (
-            self.spark
-            .read
-            .format("csv")
-            .option("header", "true")
-            .load(self.data_folder_path)
-            .withColumn("filename", F.input_file_name())
-            .repartition(50, "STATION")
-            .persist()
-        )
+        read_files = [f for f in os.listdir(self.data_folder_path) if f.endswith(".csv")]
+
+        df = self.spark.createDataFrame(data=[], schema=StructType([]))
+
+        for f in read_files:
+            print(f"Reading {f}")
+            df = df.unionByName(
+                self.spark
+                .read
+                .option("header", "true")
+                .csv(f'{self.data_folder_path}/{f}')
+            )
+
+        df = df.coalesce(50).persist()
 
         db = DataSet([
-            DataTable("raw_monthly", data_files, "noaa")
+            DataTable("raw_monthly", df, "noaa")
         ])
 
         return db
@@ -105,7 +112,7 @@ class GlobalSummaryOfMonthParse(SparkJob):
 
         measurements = raw.df.select(select_measurements).persist()
 
-        years_lookback =  [3, 5, 10]
+        years_lookback =  [3, 5, 10, 20]
         grouping_window = Window().partitionBy("ghcn_id", "month").orderBy("year")
         trend_windows = {n: grouping_window.rowsBetween(-(n-1), 0) for n in years_lookback}
         trend_columns = {
