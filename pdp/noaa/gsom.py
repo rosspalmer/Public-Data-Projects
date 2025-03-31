@@ -40,10 +40,10 @@ class GlobalSummaryOfMonthParse(SparkJob):
 
         date_columns = {
             # "DATE": ("date_month_start", "YYYY-MM"),
-            "DYNT": ("date_of_extreme_minimum", "YYYYMMDD", "a,S"),
-            "DYXT": ("date_of_extreme_maximum", "YYYYMMDD", "a,S"),
-            "DYSD": ("date_of_max_snow_depth", "YYYYMMDD", "a,S"),
-            "DYSN": ("date_of_max_snowfall", "YYYYMMDD", "a,S")
+            "DYNT": ("date_of_extreme_minimum", "yyyyMMdd", "a,S"),
+            "DYXT": ("date_of_extreme_maximum", "yyyyMMdd", "a,S"),
+            "DYSD": ("date_of_max_snow_depth", "yyyyMMdd", "a,S"),
+            "DYSN": ("date_of_max_snowfall", "yyyyMMdd", "a,S")
         }
 
         measurement_columns = {
