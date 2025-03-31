@@ -9,6 +9,10 @@ class DataTable:
     df: DataFrame
     schema: str = ''
 
+    @property
+    def full_table_name(self) -> str:
+        return f"{self.schema}.{self.name}"
+
     def write_table(self, mode: str = 'append'):
         if self.schema == '':
             raise Exception('Schema must be defined to write table')
@@ -28,10 +32,10 @@ class DataSet:
         return table
 
     def write_table(self, name: str, mode: str):
-        df = self.get_table(name).df
-        print(f"Writing table: {name} ({mode})")
+        table = self.get_table(name)
+        print(f"Writing table: {table.full_table_name} ({mode})")
         # TODO add delta writes once supported
-        df.write.mode(mode).saveAsTable(name)
+        table.df.write.mode(mode).saveAsTable(table.full_table_name)
 
     def write_all_tables(self, mode: str):
         for table_name in self.tables.keys():
