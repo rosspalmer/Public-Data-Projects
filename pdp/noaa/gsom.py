@@ -39,7 +39,7 @@ class GlobalSummaryOfMonthParse(SparkJob):
         }
 
         date_columns = {
-            "DATE": ("date_month_start", "YYYY-MM"),
+            # "DATE": ("date_month_start", "YYYY-MM"),
             "DYNT": ("date_of_extreme_minimum", "YYYYMMDD", "a,S"),
             "DYXT": ("date_of_extreme_maximum", "YYYYMMDD", "a,S"),
             "DYSD": ("date_of_max_snow_depth", "YYYYMMDD", "a,S"),
