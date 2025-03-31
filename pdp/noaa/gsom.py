@@ -28,7 +28,8 @@ class GlobalSummaryOfMonthParse(SparkJob):
                 self.spark
                 .read
                 .option("header", "true")
-                .csv(f'{self.data_folder_path}/{f}')
+                .csv(f'{self.data_folder_path}/{f}'),
+                allowMissingColumns=True
             )
 
         df = df.coalesce(50).persist()
