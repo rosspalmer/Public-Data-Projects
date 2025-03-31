@@ -14,6 +14,8 @@ class SurfaceWeatherStations(SparkJob):
 
     def read(self) -> DataSet:
 
+        self.spark.sql("CREATE SCHEMA IF NOT EXISTS noaa")
+
         raw = (
             self.spark
             .read
