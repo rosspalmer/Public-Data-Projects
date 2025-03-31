@@ -45,7 +45,7 @@ class SurfaceWeatherStations(SparkJob):
             .select(
                 F.col("ghcn_id"), F.col("wmo_id"), F.col("name"),
                 F.col("lat"), F.col("long"), F.col("elevation"),
-                F.explode("lookup")
+                F.col("lookup")
             )
         )
 
