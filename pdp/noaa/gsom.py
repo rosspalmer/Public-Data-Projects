@@ -21,7 +21,9 @@ class GlobalSummaryOfMonthParse(SparkJob):
             .option("header", "true")
             .load(self.data_folder_path)
             .withColumn("filename", F.input_file_name())
-        ).persist()
+            .repartition(50, "STATION")
+            .persist()
+        )
 
         db = DataSet([
             DataTable("raw_monthly", data_files, "noaa")
