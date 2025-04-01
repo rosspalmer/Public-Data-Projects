@@ -31,11 +31,11 @@ class GlobalSummaryOfMonthParse(SparkJob):
 
         def read_batch(iterator: Iterator[pd.DataFrame]) -> Iterator[pd.DataFrame]:
             for d in iterator:
-                d["data"] = d["file"].apply(lambda x: pd.read_csv(x).to_dict("records"))
+                d["data"] = d["file"].apply(lambda x: pd.read_csv(x).to_json(None, "records"))
                 d = d.explode("data")
                 yield d
 
-        df = df.mapInPandas(read_batch, "file string, data map<string, string>")
+        df = df.mapInPandas(read_batch, "file string, data string")
 
         df.show()
 
