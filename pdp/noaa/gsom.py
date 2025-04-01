@@ -38,7 +38,7 @@ class GlobalSummaryOfMonthParse(SparkJob):
 
         df = (
             df
-            .mapInPandas(read_batch, "file string, data string")
+            .mapInPandas(read_batch, "ghcn_id string, file string, data string")
             .withColumn("data", F.from_json("data", "array<map<string, string>>"))
             .select("ghcn_id", "file", F.explode("data"))
         )
