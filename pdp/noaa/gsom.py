@@ -4,7 +4,7 @@ from typing import Iterator
 
 import pandas as pd
 import pyspark.sql.functions as F
-from pyspark.sql.types import *
+from pyspark.sql import Row
 from pyspark.sql.window import Window
 
 from pdp.data import DataSet, DataTable
@@ -46,8 +46,8 @@ class GlobalSummaryOfMonthParse(SparkJob):
         df.filter(F.col("ghcn_id") == "GME00128314").show(100, False)
 
         headers = [
-            r.getString(0)
-            for r in df.select(F.explode(F.map_keys("data"))).distinct().collect()
+            r['header']
+            for r in df.select(F.explode(F.map_keys("data")).alias("header")).distinct().collect()
         ]
 
         print(f"Found headers: {headers}")
