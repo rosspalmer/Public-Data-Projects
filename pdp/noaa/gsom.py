@@ -20,7 +20,7 @@ class GlobalSummaryOfMonthParse(SparkJob):
 
     def read(self) -> DataSet:
 
-        read_files = [Row(file=f) for f in os.listdir(self.data_folder_path) if f.endswith(".csv")]
+        read_files = [Row(file=f'{self.data_folder_path}/{f}') for f in os.listdir(self.data_folder_path) if f.endswith(".csv")]
 
         df = self.spark.createDataFrame(
             data=read_files,
@@ -30,9 +30,7 @@ class GlobalSummaryOfMonthParse(SparkJob):
 
         def read_batch(iterator: Iterator[pd.DataFrame]) -> Iterator[pd.DataFrame]:
             for d in iterator:
-                d["data"] = d["file"].apply(
-                    lambda x: pd.read_csv(f'{self.data_folder_path}/{x}').to_dict("records")
-                )
+                d["data"] = d["file"].apply(lambda x: pd.read_csv(x).to_dict("records"))
                 d = d.explode("data")
                 yield d
 
