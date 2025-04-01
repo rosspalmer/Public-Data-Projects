@@ -25,7 +25,7 @@ class GlobalSummaryOfMonthParse(SparkJob):
                       if f.endswith(".csv")]
 
         df = (
-            self.spark.createDataFrame(data=read_files, schema="file string")
+            self.spark.createDataFrame(data=read_files)
             .repartition(50)
         )
 
