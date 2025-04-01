@@ -20,7 +20,7 @@ class GlobalSummaryOfMonthParse(SparkJob):
 
     def read(self) -> DataSet:
 
-        read_files = [f for f in os.listdir(self.data_folder_path) if f.endswith(".csv")]
+        read_files = [tuple(f) for f in os.listdir(self.data_folder_path) if f.endswith(".csv")]
 
         df = self.spark.createDataFrame(
             data=read_files,
