@@ -1,9 +1,11 @@
 
 import os
+from typing import Iterator
 
+import pandas as pd
 import pyspark.sql.functions as F
 from pyspark.sql.column import Column
-from pyspark.sql.types import StructType
+from pyspark.sql.types import *
 from pyspark.sql.window import Window
 
 from pdp.data import DataSet, DataTable
@@ -20,17 +22,31 @@ class GlobalSummaryOfMonthParse(SparkJob):
 
         read_files = [f for f in os.listdir(self.data_folder_path) if f.endswith(".csv")]
 
-        df = self.spark.createDataFrame(data=[], schema=StructType([]))
+        df = self.spark.createDataFrame(
+            data=read_files,
+            schema=StructType([StructField("file", StringType())]))
 
-        for f in read_files:
-            print(f"Reading {f}")
-            df = df.unionByName(
-                self.spark
-                .read
-                .option("header", "true")
-                .csv(f'{self.data_folder_path}/{f}'),
-                allowMissingColumns=True
-            )
+        df.show()
+
+        def read_batch(iterator: Iterator[pd.DataFrame]) -> Iterator[pd.DataFrame]:
+            for d in iterator:
+                d["data"] = d["file"].apply(lambda x: pd.read_csv(x).to_dict("records"))
+                d = d.explode("data")
+                yield d
+
+        df = df.mapInPandas(read_batch, "name str, data map<str, str>")
+
+        df.show()
+
+        # for f in read_files:
+        #     print(f"Reading {f}")
+        #     df = df.unionByName(
+        #         self.spark
+        #         .read
+        #         .option("header", "true")
+        #         .csv(f'{self.data_folder_path}/{f}'),
+        #         allowMissingColumns=True
+        #     )
 
         df = df.coalesce(50).persist()
 
