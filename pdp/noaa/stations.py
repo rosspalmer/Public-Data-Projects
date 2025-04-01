@@ -34,14 +34,14 @@ class SurfaceWeatherStations(SparkJob):
             DataTable("raw_global_stations", raw, "noaa")
         ])
 
-    def transform(self, data: DataSet) -> DataSet:
+    def transform(self, read_data: DataSet) -> DataSet:
 
         def lookup_map(lat: float, long: float) -> dict:
             coordinates = lat, long
             return reverse_geocode.get(coordinates)
         lookup_udf = F.udf(lookup_map, MapType(StringType(), StringType()))
 
-        raw = data.get_table("raw_global_stations").df
+        raw = read_data.get_table("raw_global_stations").df
 
         with_geo_data = (
             raw

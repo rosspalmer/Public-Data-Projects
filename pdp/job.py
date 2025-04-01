@@ -17,7 +17,7 @@ class SparkJob(SharedSpark, ABC):
         pass
 
     @abstractmethod
-    def transform(self, data: DataSet) -> DataSet:
+    def transform(self, read_data: DataSet) -> DataSet:
         pass
 
     @abstractmethod

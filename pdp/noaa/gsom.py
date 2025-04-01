@@ -4,7 +4,6 @@ from typing import Iterator
 
 import pandas as pd
 import pyspark.sql.functions as F
-from pyspark.sql.column import Column
 from pyspark.sql.types import *
 from pyspark.sql.window import Window
 
@@ -41,21 +40,22 @@ class GlobalSummaryOfMonthParse(SparkJob):
             .mapInPandas(read_batch, "ghcn_id string, file string, data string")
             .withColumn("data", F.from_json("data", "array<map<string, string>>"))
             .select("ghcn_id", "file", F.explode("data"))
+            .persist()
         )
 
-        df.show(1, False)
+        df.filter(F.col("ghcn_id") == "GME00128314").show(100, False)
 
-        # for f in read_files:
-        #     print(f"Reading {f}")
-        #     df = df.unionByName(
-        #         self.spark
-        #         .read
-        #         .option("header", "true")
-        #         .csv(f'{self.data_folder_path}/{f}'),
-        #         allowMissingColumns=True
-        #     )
+        headers = [
+            r.getString(0)
+            for r in df.select(F.explode(F.map_keys("data"))).distinct().collect()
+        ]
 
-        df = df.coalesce(50).persist()
+        print(f"Found headers: {headers}")
+
+        for header in headers:
+            df = df.withColumn(header, F.element_at("data", header))
+
+        df = df.persist()
 
         db = DataSet([
             DataTable("raw_monthly", df, "noaa")
@@ -63,9 +63,9 @@ class GlobalSummaryOfMonthParse(SparkJob):
 
         return db
 
-    def transform(self, data: DataSet) -> DataSet:
+    def transform(self, read_data: DataSet) -> DataSet:
 
-        raw = data.get_table("raw_monthly")
+        raw = read_data.get_table("raw_monthly")
 
         id_columns = {
             "STATION": "ghcn_id",
@@ -116,7 +116,7 @@ class GlobalSummaryOfMonthParse(SparkJob):
             "DYTS": ("days_with_thunderstorm", "int")
         }
 
-
+        raw_columns = set(raw.df.columns)
 
         select_measurements = [
             F.col(k).alias(v) for k, v in id_columns.items()
@@ -134,25 +134,21 @@ class GlobalSummaryOfMonthParse(SparkJob):
         ]
 
         measurements = raw.df.select(select_measurements).persist()
+        measurement_column_names = set(measurements.columns)
 
         years_lookback =  [3, 5, 10, 20]
         grouping_window = Window().partitionBy("ghcn_id", "month").orderBy("year")
         trend_windows = {n: grouping_window.rowsBetween(-(n-1), 0) for n in years_lookback}
-        trend_columns = {
-            n: [F.col("ghcn_id"), F.col("month_id"), F.col("date_month_start")] +
-               [F.avg(c).over(w).alias(c) for c in measurement_column_names]
+        trend_columns = [F.col("ghcn_id"), F.col("month_id"), F.col("date_month_start")] + [
+            F.avg(c).over(w).alias(f"avg{n}_{c}") for c in measurement_column_names
             for n, w in trend_windows.items()
-        }
-
-        trend_tables = [
-            DataTable(f'global_monthly_weather_avg_{n}', measurements.select(cols), "noaa")
-            for n, cols in trend_columns.items()
         ]
 
         transformed = DataSet([
             DataTable("global_monthly_weather", measurements, "noaa"),
             # TODO add measurement attributes table
-        ] + trend_tables)
+            DataTable(f"global_monthly_weather_trends", measurements.select(trend_columns), "noaa")
+        ])
 
         return transformed
 
