@@ -134,7 +134,7 @@ class GlobalSummaryOfMonthParse(SparkJob):
         ]
 
         measurements = raw.df.select(select_measurements).persist()
-        measurement_column_names = set(measurements.columns)
+        measurement_column_names = [x[0] for x in measurement_columns.values()]
 
         years_lookback =  [3, 5, 10, 20]
         grouping_window = Window().partitionBy("ghcn_id", "month").orderBy("year")
