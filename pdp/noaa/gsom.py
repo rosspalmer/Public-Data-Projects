@@ -20,7 +20,9 @@ class GlobalSummaryOfMonthParse(SparkJob):
 
     def read(self) -> DataSet:
 
-        read_files = [Row(file=f'{self.data_folder_path}/{f}') for f in os.listdir(self.data_folder_path) if f.endswith(".csv")]
+        read_files = [Row(file=f'{self.data_folder_path}/{f}', ghcn_id=f[:-4])
+                      for f in os.listdir(self.data_folder_path)
+                      if f.endswith(".csv")]
 
         df = (
             self.spark.createDataFrame(data=read_files, schema="file string")
@@ -32,12 +34,16 @@ class GlobalSummaryOfMonthParse(SparkJob):
         def read_batch(iterator: Iterator[pd.DataFrame]) -> Iterator[pd.DataFrame]:
             for d in iterator:
                 d["data"] = d["file"].apply(lambda x: pd.read_csv(x).to_json(None, "records"))
-                d = d.explode("data")
                 yield d
 
-        df = df.mapInPandas(read_batch, "file string, data string")
+        df = (
+            df
+            .mapInPandas(read_batch, "file string, data string")
+            .withColumn("data", F.from_json("data", "array<map<string, string>>"))
+            .select("ghcn_id", "file", F.explode("data"))
+        )
 
-        df.show()
+        df.show(1, False)
 
         # for f in read_files:
         #     print(f"Reading {f}")
@@ -110,8 +116,7 @@ class GlobalSummaryOfMonthParse(SparkJob):
             "DYTS": ("days_with_thunderstorm", "int")
         }
 
-        raw_columns = set(raw.df.columns)
-        measurement_column_names = [v[0] for k,v in measurement_columns.items() if k in raw_columns]
+
 
         select_measurements = [
             F.col(k).alias(v) for k, v in id_columns.items()
