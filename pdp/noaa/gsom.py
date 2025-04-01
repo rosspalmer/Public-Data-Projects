@@ -28,8 +28,6 @@ class GlobalSummaryOfMonthParse(SparkJob):
             .repartition(50)
         )
 
-        df.show()
-
         def read_batch(iterator: Iterator[pd.DataFrame]) -> Iterator[pd.DataFrame]:
             for d in iterator:
                 d["data"] = d["file"].apply(lambda x: pd.read_csv(x).to_json(None, "records"))
@@ -43,14 +41,12 @@ class GlobalSummaryOfMonthParse(SparkJob):
             .persist()
         )
 
-        df.filter(F.col("ghcn_id") == "GME00128314").show(100, False)
-
         headers = [
             r['header']
             for r in df.select(F.explode(F.map_keys("data")).alias("header")).distinct().collect()
         ]
 
-        print(f"Found headers: {headers}")
+        print(f"Found headers: {headers.sort()}")
 
         for header in headers:
             df = df.withColumn(header, F.element_at("data", header))
