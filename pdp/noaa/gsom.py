@@ -134,20 +134,26 @@ class GlobalSummaryOfMonthParse(SparkJob):
         ]
 
         measurements = raw.df.select(select_measurements).persist()
-        measurement_column_names = [x[0] for x in measurement_columns.values()]
+        measurement_column_names = [v[0] for v in measurement_columns.values() if v[0] in set(measurements.columns)]
 
-        years_lookback =  [3, 5, 10, 20]
+        # Start `global_monthly_weather_trends` table by calculating rolling
+        # averages of n past years for each station and month
+        past_n_averages =  [3, 5, 10, 20]
         grouping_window = Window().partitionBy("ghcn_id", "month").orderBy("year")
-        trend_windows = {n: grouping_window.rowsBetween(-(n-1), 0) for n in years_lookback}
+        trend_windows = {n: grouping_window.rowsBetween(-(n-1), 0) for n in past_n_averages}
         trend_columns = [F.col("ghcn_id"), F.col("month_id"), F.col("date_month_start")] + [
-            F.avg(c).over(w).alias(f"avg{n}_{c}") for c in measurement_column_names
+            F.avg(c).over(w).alias(f"avg{n}_{c}")
+            for c in measurement_column_names
             for n, w in trend_windows.items()
         ]
+        trends = measurements.select(trend_columns)
+
+        # TODO add linear regressions to trends
 
         transformed = DataSet([
             DataTable("global_monthly_weather", measurements, "noaa"),
             # TODO add measurement attributes table
-            DataTable(f"global_monthly_weather_trends", measurements.select(trend_columns), "noaa")
+            DataTable(f"global_monthly_weather_trends", trends, "noaa")
         ])
 
         return transformed
