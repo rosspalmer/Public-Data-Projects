@@ -24,7 +24,7 @@ class GlobalSummaryOfMonthParse(SparkJob):
 
         df = self.spark.createDataFrame(
             data=read_files,
-            schema="file str")
+            schema="file string")
 
         df.show()
 
@@ -34,7 +34,7 @@ class GlobalSummaryOfMonthParse(SparkJob):
                 d = d.explode("data")
                 yield d
 
-        df = df.mapInPandas(read_batch, "name str, data map<str, str>")
+        df = df.mapInPandas(read_batch, "name string, data map<string, string>")
 
         df.show()
 
