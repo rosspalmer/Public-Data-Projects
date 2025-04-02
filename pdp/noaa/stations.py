@@ -44,7 +44,7 @@ class SurfaceWeatherStations(SparkJob):
         lookups = zip(ids, reverse_geocode.search(coords))
         lookup_df = self.spark.createDataFrame(
             data=lookups,
-            schema="ghcn_id str, data map<string, string>"
+            schema="ghcn_id string, data map<string, string>"
         )
 
         with_geo_data = (
