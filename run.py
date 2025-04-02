@@ -1,10 +1,18 @@
-from pdp.noaa.gsom import GlobalSummaryOfMonthParse
+from pdp.noaa.gsom import *
 from pdp.noaa.stations import SurfaceWeatherStations
 
 print("stations")
 job = SurfaceWeatherStations("/mnt/lake-fs/raw/gov/noaa/ncei")
 job.run()
 
-# print("gsom-parse")
-# job = GlobalSummaryOfMonthParse("/mnt/lake-fs/raw/gov/noaa/ncei/gsom")
-# job.run()
+print("gsom-parse")
+job = ParseGlobalSummaryOfMonth("/mnt/lake-fs/raw/gov/noaa/ncei/gsom")
+job.run()
+
+print("global-monthly-weather")
+job = GlobalMonthlyWeather()
+job.run()
+
+print("global-monthly-weather-trends")
+job = GlobalMonthlyWeatherTrends()
+job.run()

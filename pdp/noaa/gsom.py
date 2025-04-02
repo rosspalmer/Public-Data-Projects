@@ -5,16 +5,17 @@ from typing import Iterator
 import pandas as pd
 import pyspark.sql.functions as F
 from pyspark.sql import Row
+from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.window import Window
 
 from pdp.data import DataSet, DataTable
 from pdp.job import SparkJob
 
 
-class GlobalSummaryOfMonthParse(SparkJob):
+class ParseGlobalSummaryOfMonth(SparkJob):
 
     def __init__(self, data_folder_path: str):
-        super().__init__("gsom-parse")
+        super().__init__("raw_global_summary_of_month")
         self.data_folder_path = data_folder_path
 
     def read(self) -> DataSet:
@@ -33,9 +34,19 @@ class GlobalSummaryOfMonthParse(SparkJob):
                 d["data"] = d["file"].apply(lambda x: pd.read_csv(x).to_json(None, "records"))
                 yield d
 
+        df = df.mapInPandas(read_batch, "ghcn_id string, file string, data string")
+
+        return DataSet([
+            DataTable("pandas_read", df)
+        ])
+
+
+    def transform(self, read_data: DataSet) -> DataSet:
+
+        df = read_data.get_table("pandas_read").df.persist()
+
         df = (
             df
-            .mapInPandas(read_batch, "ghcn_id string, file string, data string")
             .withColumn("data", F.from_json("data", "array<map<string, string>>"))
             .select("ghcn_id", "file", F.explode("data").alias("data"))
             .persist()
@@ -59,6 +70,56 @@ class GlobalSummaryOfMonthParse(SparkJob):
 
         return db
 
+    def write(self, data: DataSet):
+        data.write_all_tables("overwrite")
+
+
+class GlobalMonthlyWeather(SparkJob):
+    MEASUREMENT_COLUMNS = {
+        "TAVG": ("average_daily_temperature", "float", "a,S"),
+        "TMAX": ("average_daily_max_temperature", "float", "a,S"),
+        "TMIN": ("average_daily_min_temperature", "float", "a,S"),
+        "ADPT": ("average_dew_point_temperature", "float", "a,M,Q,S"),
+        "AWBT": ("average_wet_bulb_temperature", "float", "a,M,Q,S"),
+        "EMNT": ("extreme_minimum_temperature", "float", "a,S,cc,d"),
+        "EMXT": ("extreme_maximum_temperature", "float", "a,S,cc,d"),
+        "ASLP": ("average_sea_level_pressure", "float", "a,M,Q,S"),
+        "ASTP": ("average_station_level_pressure", "float", "a,M,Q,S"),
+        "AWND": ("average_wind_speed", "float", "a,S"),
+        "RHAV": ("average_relative_humidity", "float", "a,M,Q,S"),
+        "RHMX": ("average_max_relative_humidity", "float", "a,M,Q,S"),
+        "RHMN": ("average_min_relative_humidity", "float", "a,M,Q,S"),
+        "PSUN": ("average_daily_pct_sunshine", "float", "a,S"),
+        "EMXP": ("max_daily_precipitation", "float", "a,M,S,cc,d"),
+        "EMSN": ("max_daily_snowfall", "float", "a,M,S,cc,d"),
+        "EMSD": ("max_daily_snow_depth", "float", "a,M,S,cc,d"),
+        "EVAP": ("total_evaporation", "float", "a,M,Q,S"),
+        "PRCP": ("total_precipitation", "float", "a,M,Q,S"),
+        "SNOW": ("total_snowfall", "float", "a,M,Q,S"),
+        "DSND": ("days_with_snow_depth", "int", "a,S"),
+        "DSNW": ("days_with_snowfall", "int", "a,S"),
+        "DT00": ("days_below_zero", "int", "a,S"),
+        "DT32": ("days_below_freezing", "int", "a,S"),
+        "DT70": ("days_above_70", "int", "a,S"),
+        "DT90": ("days_above_90", "int", "a,S"),
+        "CDSD": ("cooling_degree_days_season", "int", "a,S"),
+        "CLDD": ("cooling_degree_days", "int", "a,S"),
+        "HDSD": ("heating_degree_days_season", "int", "a,S"),
+        "HTDD": ("heating_degree_days", "int", "a,S"),
+        "DYFG": ("days_with_fog", "int"),
+        "DYHF": ("days_with_heavy_fog", "int"),
+        "DYTS": ("days_with_thunderstorm", "int")
+    }
+
+    def __init__(self):
+        super().__init__("global_monthly_weather")
+
+    def read(self) -> DataSet:
+        raw_monthly = self.spark.table("noaa.raw_monthly")
+        return DataSet([
+            DataTable("raw_monthly", raw_monthly, "noaa")
+        ])
+
     def transform(self, read_data: DataSet) -> DataSet:
 
         raw = read_data.get_table("raw_monthly")
@@ -76,83 +137,88 @@ class GlobalSummaryOfMonthParse(SparkJob):
             "DYSN": ("date_of_max_snowfall", "yyyyMMdd", "a,S")
         }
 
-        measurement_columns = {
-            "TAVG": ("average_daily_temperature", "float", "a,S"),
-            "TMAX": ("average_daily_max_temperature", "float", "a,S"),
-            "TMIN": ("average_daily_min_temperature", "float", "a,S"),
-            "ADPT": ("average_dew_point_temperature", "float", "a,M,Q,S"),
-            "AWBT": ("average_wet_bulb_temperature", "float", "a,M,Q,S"),
-            "EMNT": ("extreme_minimum_temperature", "float", "a,S,cc,d"),
-            "EMXT": ("extreme_maximum_temperature", "float", "a,S,cc,d"),
-            "ASLP": ("average_sea_level_pressure", "float", "a,M,Q,S"),
-            "ASTP": ("average_station_level_pressure", "float", "a,M,Q,S"),
-            "AWND": ("average_wind_speed", "float", "a,S"),
-            "RHAV": ("average_relative_humidity", "float", "a,M,Q,S"),
-            "RHMX": ("average_max_relative_humidity", "float", "a,M,Q,S"),
-            "RHMN": ("average_min_relative_humidity", "float", "a,M,Q,S"),
-            "PSUN": ("average_daily_pct_sunshine", "float", "a,S"),
-            "EMXP": ("max_daily_precipitation", "float", "a,M,S,cc,d"),
-            "EMSN": ("max_daily_snowfall", "float", "a,M,S,cc,d"),
-            "EMSD": ("max_daily_snow_depth", "float", "a,M,S,cc,d"),
-            "EVAP": ("total_evaporation", "float", "a,M,Q,S"),
-            "PRCP": ("total_precipitation", "float", "a,M,Q,S"),
-            "SNOW": ("total_snowfall", "float", "a,M,Q,S"),
-            "DSND": ("days_with_snow_depth", "int", "a,S"),
-            "DSNW": ("days_with_snowfall", "int", "a,S"),
-            "DT00": ("days_below_zero", "int", "a,S"),
-            "DT32": ("days_below_freezing", "int", "a,S"),
-            "DT70": ("days_above_70", "int", "a,S"),
-            "DT90": ("days_above_90", "int", "a,S"),
-            "CDSD": ("cooling_degree_days_season", "int", "a,S"),
-            "CLDD": ("cooling_degree_days", "int", "a,S"),
-            "HDSD": ("heating_degree_days_season", "int", "a,S"),
-            "HTDD": ("heating_degree_days", "int", "a,S"),
-            "DYFG": ("days_with_fog", "int"),
-            "DYHF": ("days_with_heavy_fog", "int"),
-            "DYTS": ("days_with_thunderstorm", "int")
-        }
-
         raw_columns = set(raw.df.columns)
 
         select_measurements = [
-            F.col(k).alias(v) for k, v in id_columns.items()
-        ] + [
-            F.col("DATE").substr(0, 4).alias("year"),
-            F.col("DATE").substr(6, 2).alias("month")
-        ] + [
-            # Convert to date type using formatting specified above
-            F.to_date(F.col(k), v[1]).alias(v[0])
-            for k, v in date_columns.items() if k in raw_columns
-        ] + [
-            # Convert to type defined in section above and use long form name
-            F.col(k).cast(v[1]).alias(v[0])
-            for k, v in measurement_columns.items() if k in raw_columns
-        ]
+              F.col(k).alias(v) for k, v in id_columns.items()
+          ] + [
+              F.col("DATE").substr(0, 4).cast("int").alias("year"),
+              F.col("DATE").substr(6, 2).cast("int").alias("month")
+          ] + [
+              # Convert to date type using formatting specified above
+              F.to_date(F.col(k), v[1]).alias(v[0])
+              for k, v in date_columns.items() if k in raw_columns
+          ] + [
+              # Convert to type defined in section above and use long form name
+              F.col(k).cast(v[1]).alias(v[0])
+              for k, v in GlobalMonthlyWeather.MEASUREMENT_COLUMNS.items() if k in raw_columns
+          ]
 
-        measurements = raw.df.select(select_measurements).persist()
-        measurement_column_names = [v[0] for v in measurement_columns.values() if v[0] in set(measurements.columns)]
+        measurements = raw.df.select(select_measurements)
+
+        transformed = DataSet([
+            DataTable("global_monthly_weather", measurements, "noaa"),
+        ])
+
+        return transformed
+
+    def write(self, data: DataSet):
+        data.write_table("global_monthly_weather", "overwrite")
+
+
+class GlobalMonthlyWeatherTrends(SparkJob):
+
+    def __init__(self):
+        super().__init__("global_monthly_weather_trends")
+
+    def read(self) -> DataSet:
+        return DataSet([
+            DataTable("global_monthly_weather", self.spark.table("noaa.global_monthly_weather")),
+        ])
+
+    def transform(self, read_data: DataSet) -> DataSet:
+
+        measurements = (
+            read_data
+            .get_table("global_monthly_weather")
+            .df
+            .withColumn("has_data", F.lit(True))
+        )
+
+        station_range: DataFrame = measurements.select("ghcn_id").distinct()
+        years_range: DataFrame = self.spark.createDataFrame(data=(range(1900, 2025)), schema="year int")
+        months_range: DataFrame = self.spark.createDataFrame(data=(range(1, 13)), schema="month int")
+        full_data_range: DataFrame = station_range.years_range.crossJoin(months_range)
+
+        measurement_column_names = [v[0]
+                                    for v in GlobalMonthlyWeather.MEASUREMENT_COLUMNS.values()
+                                    if v[0] in set(measurements.columns)]
 
         # Start `global_monthly_weather_trends` table by calculating rolling
         # averages of n past years for each station and month
         past_n_averages =  [3, 5, 10, 20]
         grouping_window = Window().partitionBy("ghcn_id", "month").orderBy("year")
         trend_windows = {n: grouping_window.rowsBetween(-(n-1), 0) for n in past_n_averages}
-        trend_columns = [F.col("ghcn_id"), F.col("month_id"), F.col("date_month_start")] + [
-            F.avg(c).over(w).alias(f"avg{n}_{c}")
+
+        trend_columns = ([F.col("ghcn_id"), F.col("month_id"), F.col("date_month_start"),
+                         F.col("year"), F.col("month")] +
+        [
+            F.when(F.count(c).over(w) == F.lit(n), F.avg(c).over(w)).alias(f"avg{n}_{c}")
             for c in measurement_column_names
             for n, w in trend_windows.items()
-        ]
-        trends = measurements.select(trend_columns)
+        ])
+
+        trends = (
+            full_data_range
+            .join(measurements, ["ghcn_id", "year", "month"], "left")
+            .select(trend_columns)
+        )
 
         # TODO add linear regressions to trends
 
-        transformed = DataSet([
-            DataTable("global_monthly_weather", measurements, "noaa"),
-            # TODO add measurement attributes table
+        return DataSet([
             DataTable(f"global_monthly_weather_trends", trends, "noaa")
         ])
 
-        return transformed
-
     def write(self, data: DataSet):
-        data.write_all_tables("overwrite")
+        data.write_table("global_monthly_weather_trends", "overwrite")
