@@ -9,7 +9,7 @@ class SharedSpark:
 
         self.spark = (
            SparkSession.builder
-           .master("spark://spark-driver.hsd1.co.comcast.net:7077")
+           .master("spark:/10.0.0.2:7077")
            .appName(app_name)
            .config("spark.sql.warehouse.dir", "file:/mnt/lake-fs/spark-warehouse")
            .config("spark.databricks.delta.schema.autoMerge.enabled", True)
