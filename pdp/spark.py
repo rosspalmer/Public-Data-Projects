@@ -13,7 +13,7 @@ class SharedSpark:
            .appName(app_name)
            .config("spark.sql.warehouse.dir", "file:/mnt/lake-fs/spark-warehouse")
            .config("spark.databricks.delta.schema.autoMerge.enabled", True)
-           # .enableHiveSupport()
+           .enableHiveSupport()
            .getOrCreate()
         )
 
