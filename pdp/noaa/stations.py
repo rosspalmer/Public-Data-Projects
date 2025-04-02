@@ -36,21 +36,20 @@ class SurfaceWeatherStations(SparkJob):
 
     def transform(self, read_data: DataSet) -> DataSet:
 
-        def lookup_map(lat: float, long: float) -> dict:
-            coordinates = lat, long
-            return reverse_geocode.get(coordinates)
-        lookup_udf = F.udf(lookup_map, MapType(StringType(), StringType()))
-
         raw = read_data.get_table("raw_global_stations").df
+        stations = [(r.ghcn_id, (r.lat, r.long)) for r in raw.collect()]
+        ids = [x[0] for x in stations]
+        coords = [x[1] for x in stations]
+
+        lookups = zip(ids, reverse_geocode.search(coords))
+        lookup_df = self.spark.createDataFrame(
+            data=lookups,
+            schema="ghcn_id str, data map<string, string>"
+        )
 
         with_geo_data = (
             raw
-            .withColumn("lookup", lookup_udf("lat", "long"))
-            .select(
-                F.col("ghcn_id"), F.col("wmo_id"), F.col("name"),
-                F.col("lat"), F.col("long"), F.col("elevation"),
-                F.explode("lookup")
-            )
+            .join(lookup_df, "ghcn_id", "left")
         )
 
         return DataSet([
