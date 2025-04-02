@@ -37,7 +37,7 @@ class ParseGlobalSummaryOfMonth(SparkJob):
         df = df.mapInPandas(read_batch, "ghcn_id string, file string, data string")
 
         return DataSet([
-            DataTable("pandas_read", df)
+            DataTable("pandas_read", df, "noaa")
         ])
 
 
@@ -71,7 +71,7 @@ class ParseGlobalSummaryOfMonth(SparkJob):
         return db
 
     def write(self, data: DataSet):
-        data.write_all_tables("overwrite")
+        data.write_table("raw_monthly", "overwrite")
 
 
 class GlobalMonthlyWeather(SparkJob):
