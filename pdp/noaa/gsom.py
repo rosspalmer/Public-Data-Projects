@@ -62,8 +62,6 @@ class ParseGlobalSummaryOfMonth(SparkJob):
         for header in headers:
             df = df.withColumn(header, F.element_at("data", header))
 
-        df = df.persist()
-
         db = DataSet([
             DataTable("raw_monthly", df, "noaa")
         ])
