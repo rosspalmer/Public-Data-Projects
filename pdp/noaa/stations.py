@@ -63,6 +63,7 @@ class SurfaceWeatherStations(SparkJob):
 
         with_geo_data = (
             raw
+            .drop("state")
             .join(lookup_df, "ghcn_id", "left")
         )
 
