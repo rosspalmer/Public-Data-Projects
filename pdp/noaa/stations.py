@@ -61,10 +61,17 @@ class SurfaceWeatherStations(SparkJob):
 
         lookup_df = lookup_df.drop("data")
 
+        cast_type = {
+            "lat": "float", "long": "float",
+            "latitude": "float", "longitude": "float",
+            "elevation": "long", "population": "long"
+        }
+
         with_geo_data = (
             raw
             .drop("state")
             .join(lookup_df, "ghcn_id", "left")
+            .withColumns({k: F.col(k).cast(v) for k, v in cast_type.items()})
         )
 
         return DataSet([
