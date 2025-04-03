@@ -45,7 +45,21 @@ class SurfaceWeatherStations(SparkJob):
         lookup_df = self.spark.createDataFrame(
             data=lookups,
             schema="ghcn_id string, data map<string, string>"
-        )
+        ).persist()
+
+        data_keys = [r.data_key for r in (
+            lookup_df.select(
+                F.explode(
+                    F.map_keys("data")
+                ).alias("data_key"))
+            .distinct()
+            .collect()
+        )]
+
+        for k in data_keys:
+            lookup_df = lookup_df.withColumn(k, F.element_at("data", k))
+
+        lookup_df = lookup_df.drop("data")
 
         with_geo_data = (
             raw
