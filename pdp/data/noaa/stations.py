@@ -1,8 +1,7 @@
 from pdp.data import DataSet, DataTable
-from pdp.job import SparkJob
+from pdp.data.job import SparkJob
 
 import pyspark.sql.functions as F
-from pyspark.sql.types import *
 
 import reverse_geocode
 

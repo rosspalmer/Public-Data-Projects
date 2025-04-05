@@ -1,10 +1,7 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-
-from pyspark.sql import DataFrame
 
 from pdp.data import DataSet, merge_datasets
-from pdp.spark import SharedSpark
+from pdp.data.spark import SharedSpark
 
 
 class SparkJob(SharedSpark, ABC):

@@ -9,7 +9,7 @@ from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.window import Window
 
 from pdp.data import DataSet, DataTable
-from pdp.job import SparkJob
+from pdp.data.job import SparkJob
 
 
 class ParseGlobalSummaryOfMonth(SparkJob):

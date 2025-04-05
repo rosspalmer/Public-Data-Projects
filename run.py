@@ -1,5 +1,4 @@
-from pdp.noaa.gsom import *
-from pdp.noaa.stations import SurfaceWeatherStations
+from pdp.data.noaa.stations import SurfaceWeatherStations
 
 print("stations")
 job = SurfaceWeatherStations("/mnt/lake-fs/raw/gov/noaa/ncei")

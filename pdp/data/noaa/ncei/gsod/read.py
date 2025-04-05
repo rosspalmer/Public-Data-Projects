@@ -1,16 +1,12 @@
-from pprint import pprint
-from typing import List
-
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
 
 import pandas as pd
 import pyspark.pandas as ps
-from pyspark.sql import Row
 from pyspark.sql.functions import avg, col, concat_ws, datepart, length, lit
 from pyspark.sql.functions import max, min, regexp, sum, to_date, when, udf
 
-from pdp.spark import SharedSpark
+from pdp.data.spark import SharedSpark
 
 
 class GlobalSurfaceSummaryOfDay(SharedSpark):
