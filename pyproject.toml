@@ -1,0 +1,28 @@
+[project]
+name = "pdp"
+version = "0.1.0"
+authors = [
+  {name="Ross Palmer", email="rossbpalmer@gmail.com"},
+  {name="Hannah Glazier", email="glazierhannah@gmail.com"}
+]
+description = "Application for Public Data Projects"
+readme = "README.md"
+
+[project.urls]
+Homepage="https://github.com/rosspalmer/Public-Data-Projects"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[poetry.dependencies]
+python = ">=3.11,<3.14"
+typer = "^0.15.1"
+fastapi = "0.115.12"
+uvicorn = "0.34.0"
+pyspark = "3.5.5"
+py4j = ">=0.10.9.7"
+pandas = ">=1.0.5"
+pyarrow = ">=4.0.0,<13.0.0"
+numpy = ">=1.15"
+reverse-geocode = "1.6.5"
