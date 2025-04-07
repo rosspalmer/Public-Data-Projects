@@ -30,7 +30,7 @@ class SurfaceWeatherStations(SparkJob):
         raw.show()
 
         return DataSet([
-            DataTable("raw_global_stations", raw, "noaa")
+            DataTable("noaa", "raw_global_stations", raw, "overwrite")
         ])
 
     def transform(self, read_data: DataSet) -> DataSet:
@@ -74,8 +74,6 @@ class SurfaceWeatherStations(SparkJob):
         )
 
         return DataSet([
-            DataTable("global_stations", with_geo_data, "noaa")
+            DataTable("noaa", "global_stations", with_geo_data, "overwrite"),
+            read_data.get_table("raw_global_stations")
         ])
-
-    def write(self, data: DataSet):
-        data.write_all_tables("overwrite")

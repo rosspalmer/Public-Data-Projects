@@ -6,7 +6,7 @@ class DataTable:
     schema: str
     name: str
     df: DataFrame = None
-    mode: str = 'append'
+    mode: str = 'none'
 
     @property
     def full_table_name(self) -> str:
@@ -18,10 +18,13 @@ class DataTable:
         self.df = spark.table(self.full_table_name)
 
     def write_table(self):
+
         if self.schema == '':
             raise Exception('Schema must be defined to write table')
-        full_table_name = f"{self.schema}.{self.name}"
-        self.df.write.mode(self.mode).saveAsTable(full_table_name)
+        if self.mode == 'none':
+            raise Exception('Mode must be defined to write table')
+
+        self.df.write.mode(self.mode).saveAsTable(self.full_table_name)
 
 
 class DataSet:
