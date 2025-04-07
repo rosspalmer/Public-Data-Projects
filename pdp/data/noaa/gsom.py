@@ -262,10 +262,10 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkJob):
 
         stations = stations.filter("avg10_temperature_count >= 800").select("ghcn_id")
 
-        collect_columns = ["year", "average_daily_temperature", "average_daily_temperature_avg10",
-                           "average_daily_min_temperature", "average_daily_min_temperature_avg10",
-                           "average_daily_max_temperature", "average_daily_max_temperature_avg10",
-                           "total_precipitation", "total_precipitation_avg10"]
+        collect_columns = ["year", "average_daily_temperature", "avg10_average_daily_temperature",
+                           "average_daily_min_temperature", "avg10_average_daily_min_temperature",
+                           "average_daily_max_temperature", "avg10_average_daily_max_temperature",
+                           "total_precipitation", "avg10_total_precipitation"]
 
         frontend = (
             trends
