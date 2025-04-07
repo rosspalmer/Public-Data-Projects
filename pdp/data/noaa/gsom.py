@@ -194,7 +194,7 @@ class GlobalMonthlyWeatherTrends(SparkJob):
         trend_columns = ([F.col("ghcn_id"), F.col("month_id"), F.col("date_month_start"),
                          F.col("year"), F.col("month")] +
         [
-            F.when(F.count(c).over(w) == F.lit(n), F.avg(c).over(w)).alias(f"avg{n}_{c}")
+            F.when(F.count(c).over(w) == F.lit(n), F.avg(c).over(w).cast("decimal<16,3>")).alias(f"avg{n}_{c}")
             for c in measurement_column_names
             for n, w in trend_windows.items()
         ])
