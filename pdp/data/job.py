@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from pdp.data import DataSet, merge_datasets
+from pdp.data.data import DataSet
 from pdp.data.spark import SharedSpark
 
 
@@ -17,14 +17,10 @@ class SparkJob(SharedSpark, ABC):
     def transform(self, read_data: DataSet) -> DataSet:
         pass
 
-    @abstractmethod
-    def write(self, data: DataSet):
-        pass
-
     def run(self):
-        read_dataset = self.read()
-        transform_dataset = self.transform(read_dataset)
-        # Combine read data with transformed data in
-        # case read data needs to be written
-        write_db = merge_datasets([read_dataset, transform_dataset])
-        self.write(write_db)
+
+        read_dataset: DataSet = self.read()
+        read_dataset.read_empty_tables(self.spark)
+
+        write_dataset: DataSet = self.transform(read_dataset)
+        write_dataset.write_all_tables()

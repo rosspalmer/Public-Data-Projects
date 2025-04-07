@@ -1,23 +1,27 @@
-from dataclasses import dataclass
 
-from pyspark.sql import DataFrame
+from pyspark.sql import SparkSession, DataFrame
 
 
-@dataclass
 class DataTable:
+    schema: str
     name: str
-    df: DataFrame
-    schema: str = ''
+    df: DataFrame = None
+    mode: str = 'append'
 
     @property
     def full_table_name(self) -> str:
         return f"{self.schema}.{self.name}"
 
-    def write_table(self, mode: str = 'append'):
+    def read_table(self, spark: SparkSession, exists_ok: bool = False):
+        if exists_ok and not self.df is None:
+            raise Exception(f"Dataframe for {self.full_table_name} already exists")
+        self.df = spark.table(self.full_table_name)
+
+    def write_table(self):
         if self.schema == '':
             raise Exception('Schema must be defined to write table')
         full_table_name = f"{self.schema}.{self.name}"
-        self.df.write.mode(mode).saveAsTable(full_table_name)
+        self.df.write.mode(self.mode).saveAsTable(full_table_name)
 
 
 class DataSet:
@@ -31,15 +35,19 @@ class DataSet:
             raise KeyError(f"Table {name} not found")
         return table
 
-    def write_table(self, name: str, mode: str):
-        table = self.get_table(name)
-        print(f"Writing table: {table.full_table_name} ({mode})")
-        # TODO add delta writes once supported
-        table.df.write.mode(mode).saveAsTable(table.full_table_name)
+    def read_empty_tables(self, spark: SparkSession):
+        for table in self.tables.values():
+            if table.df is None:
+                table.read_table(spark)
 
-    def write_all_tables(self, mode: str):
+    def write_table(self, name: str):
+        table = self.get_table(name)
+        print(f"Writing table: {table.full_table_name} ({table.mode})")
+        table.write_table()
+
+    def write_all_tables(self):
         for table_name in self.tables.keys():
-            self.write_table(table_name, mode)
+            self.write_table(table_name)
 
 
 def merge_datasets(datasets: list[DataSet]) -> DataSet:
