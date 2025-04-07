@@ -1,0 +1,35 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background-color: #f4f4f4;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+#data-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+#charts-container {
+  margin-top: 30px;
+}
+
+#map {
+  height: 400px;
+}
+
+#map-container {
+    margin-top: 20px; /* Space above the map section */
+}
+
+#map {
+    width: 100%; /* Full width for responsive design */
+    height: 400px; /* Set a specific height */
+    border: 1px solid #ccc; /* Optional: Add a border to distinguish map area */
+}
