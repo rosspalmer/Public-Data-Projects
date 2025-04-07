@@ -1,4 +1,4 @@
-from pdp.data import DataSet, DataTable
+from pdp.data.data import DataSet, DataTable
 from pdp.data.job import SparkJob
 
 import pyspark.sql.functions as F
