@@ -273,7 +273,7 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkJob):
             .join(measurements, ["ghcn_id", "year", "month"], "left")
             .orderBy("year")
             .groupBy("ghcn_id", "month")
-            .agg([F.collect_list(c).alias(c) for c in collect_columns])
+            .agg(*[F.collect_list(c).alias(c) for c in collect_columns])
             .select(
                 "ghcn_id",
                 "month",
