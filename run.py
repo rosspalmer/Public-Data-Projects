@@ -1,4 +1,4 @@
-from pdp.data.noaa.gsom import TrendStationsQualified
+from pdp.data.noaa.gsom import TrendStationsQualified, GlobalMonthlyWeatherTrendsFrontend
 from pdp.data.noaa.stations import SurfaceWeatherStations
 
 # print("stations")
@@ -19,4 +19,8 @@ from pdp.data.noaa.stations import SurfaceWeatherStations
 
 print("global-monthly-weather-trends")
 job = TrendStationsQualified()
+job.run()
+
+print("frontend")
+job = GlobalMonthlyWeatherTrendsFrontend()
 job.run()

@@ -224,7 +224,7 @@ class TrendStationsQualified(SparkJob):
 
     def transform(self, read_data: DataSet) -> DataSet:
 
-        trends = read_data.get_table("global_monthly_weather_trends")
+        trends = read_data.get_table("global_monthly_weather_trends").df
 
         qualified = (
             trends
@@ -236,7 +236,51 @@ class TrendStationsQualified(SparkJob):
         )
 
         write = [
-            DataTable("noaa", "global_stations_qualified", qualified, "overwrite")
+            DataTable("noaa", "global_stations_trend_counts", qualified, "overwrite")
         ]
 
         return DataSet(write)
+
+
+class GlobalMonthlyWeatherTrendsFrontend(SparkJob):
+
+    def __init__(self):
+        super().__init__("global_monthly_weather_trends_frontend")
+
+    def read(self) -> DataSet:
+        return DataSet([
+            DataTable("noaa", "global_stations_trend_counts"),
+            DataTable("noaa", "global_monthly_weather"),
+            DataTable("noaa", "global_monthly_weather_trends")
+        ])
+
+    def transform(self, read_data: DataSet) -> DataSet:
+
+        stations = read_data.get_table("global_stations_trend_counts").df
+        measurements = read_data.get_table("global_monthly_weather").df
+        trends = read_data.get_table("global_monthly_weather_trends").df
+
+        stations = stations.filter("avg10_temperature_count >= 800").select("ghcn_id")
+
+        collect_columns = ["year", "average_daily_temperature", "average_daily_temperature_avg10",
+                           "average_daily_min_temperature", "average_daily_min_temperature_avg10",
+                           "average_daily_max_temperature", "average_daily_max_temperature_avg10",
+                           "total_precipitation", "total_precipitation_avg10"]
+
+        frontend = (
+            trends
+            .join(stations, "ghcn_id", "inner")
+            .join(measurements, ["ghcn_id", "year", "month"], "left")
+            .orderBy("year")
+            .groupBy("ghcn_id", "month")
+            .agg([F.collect_list(c).alias(c) for c in collect_columns])
+            .select(
+                "ghcn_id",
+                "month",
+                F.to_json(F.struct(*collect_columns)).alias("json"),
+            )
+        )
+
+        return DataSet([
+            DataTable("noaa", "global_monthly_trends_frontend", frontend, "overwrite")
+        ])
