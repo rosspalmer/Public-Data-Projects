@@ -71,26 +71,26 @@ class ParseGlobalSummaryOfMonth(SparkJob):
 
 class GlobalMonthlyWeather(SparkJob):
     MEASUREMENT_COLUMNS = {
-        "TAVG": ("average_daily_temperature", "decimal<16,3>", "a,S"),
-        "TMAX": ("average_daily_max_temperature", "decimal<16,3>", "a,S"),
-        "TMIN": ("average_daily_min_temperature", "decimal<16,3>", "a,S"),
-        "ADPT": ("average_dew_point_temperature", "decimal<16,3>", "a,M,Q,S"),
-        "AWBT": ("average_wet_bulb_temperature", "decimal<16,3>", "a,M,Q,S"),
-        "EMNT": ("extreme_minimum_temperature", "decimal<16,3>", "a,S,cc,d"),
-        "EMXT": ("extreme_maximum_temperature", "decimal<16,3>", "a,S,cc,d"),
-        "ASLP": ("average_sea_level_pressure", "decimal<16,3>", "a,M,Q,S"),
-        "ASTP": ("average_station_level_pressure", "decimal<16,3>", "a,M,Q,S"),
-        "AWND": ("average_wind_speed", "decimal<16,3>", "a,S"),
-        "RHAV": ("average_relative_humidity", "decimal<16,3>", "a,M,Q,S"),
-        "RHMX": ("average_max_relative_humidity", "decimal<16,3>", "a,M,Q,S"),
-        "RHMN": ("average_min_relative_humidity", "decimal<16,3>", "a,M,Q,S"),
-        "PSUN": ("average_daily_pct_sunshine", "decimal<16,3>", "a,S"),
-        "EMXP": ("max_daily_precipitation", "decimal<16,3>", "a,M,S,cc,d"),
-        "EMSN": ("max_daily_snowfall", "decimal<16,3>", "a,M,S,cc,d"),
-        "EMSD": ("max_daily_snow_depth", "decimal<16,3>", "a,M,S,cc,d"),
-        "EVAP": ("total_evaporation", "decimal<16,3>", "a,M,Q,S"),
-        "PRCP": ("total_precipitation", "decimal<16,3>", "a,M,Q,S"),
-        "SNOW": ("total_snowfall", "decimal<16,3>", "a,M,Q,S"),
+        "TAVG": ("average_daily_temperature", "decimal(16,3)", "a,S"),
+        "TMAX": ("average_daily_max_temperature", "decimal(16,3)", "a,S"),
+        "TMIN": ("average_daily_min_temperature", "decimal(16,3)", "a,S"),
+        "ADPT": ("average_dew_point_temperature", "decimal(16,3)", "a,M,Q,S"),
+        "AWBT": ("average_wet_bulb_temperature", "decimal(16,3)", "a,M,Q,S"),
+        "EMNT": ("extreme_minimum_temperature", "decimal(16,3)", "a,S,cc,d"),
+        "EMXT": ("extreme_maximum_temperature", "decimal(16,3)", "a,S,cc,d"),
+        "ASLP": ("average_sea_level_pressure", "decimal(16,3)", "a,M,Q,S"),
+        "ASTP": ("average_station_level_pressure", "decimal(16,3)", "a,M,Q,S"),
+        "AWND": ("average_wind_speed", "decimal(16,3)", "a,S"),
+        "RHAV": ("average_relative_humidity", "decimal(16,3)", "a,M,Q,S"),
+        "RHMX": ("average_max_relative_humidity", "decimal(16,3)", "a,M,Q,S"),
+        "RHMN": ("average_min_relative_humidity", "decimal(16,3)", "a,M,Q,S"),
+        "PSUN": ("average_daily_pct_sunshine", "decimal(16,3)", "a,S"),
+        "EMXP": ("max_daily_precipitation", "decimal(16,3)", "a,M,S,cc,d"),
+        "EMSN": ("max_daily_snowfall", "decimal(16,3)", "a,M,S,cc,d"),
+        "EMSD": ("max_daily_snow_depth", "decimal(16,3)", "a,M,S,cc,d"),
+        "EVAP": ("total_evaporation", "decimal(16,3)", "a,M,Q,S"),
+        "PRCP": ("total_precipitation", "decimal(16,3)", "a,M,Q,S"),
+        "SNOW": ("total_snowfall", "decimal(16,3)", "a,M,Q,S"),
         "DSND": ("days_with_snow_depth", "int", "a,S"),
         "DSNW": ("days_with_snowfall", "int", "a,S"),
         "DT00": ("days_below_zero", "int", "a,S"),
@@ -194,7 +194,7 @@ class GlobalMonthlyWeatherTrends(SparkJob):
         trend_columns = ([F.col("ghcn_id"), F.col("month_id"), F.col("date_month_start"),
                          F.col("year"), F.col("month")] +
         [
-            F.when(F.count(c).over(w) == F.lit(n), F.avg(c).over(w).cast("decimal<16,3>")).alias(f"avg{n}_{c}")
+            F.when(F.count(c).over(w) == F.lit(n), F.avg(c).over(w).cast("decimal(16,3)")).alias(f"avg{n}_{c}")
             for c in measurement_column_names
             for n, w in trend_windows.items()
         ])
