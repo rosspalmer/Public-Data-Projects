@@ -1,7 +1,9 @@
 
+from dataclasses import dataclass
 from pyspark.sql import SparkSession, DataFrame
 
 
+@dataclass
 class DataTable:
     schema: str
     name: str

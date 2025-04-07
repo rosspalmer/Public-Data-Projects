@@ -8,7 +8,7 @@ from pyspark.sql import Row
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.window import Window
 
-from pdp.data import DataSet, DataTable
+from pdp.data.data import DataSet, DataTable
 from pdp.data.job import SparkJob
 
 
@@ -37,7 +37,7 @@ class ParseGlobalSummaryOfMonth(SparkJob):
         df = df.mapInPandas(read_batch, "ghcn_id string, file string, data string")
 
         return DataSet([
-            DataTable("pandas_read", df, "noaa")
+            DataTable("noaa", "pandas_read", df)
         ])
 
 
@@ -63,13 +63,10 @@ class ParseGlobalSummaryOfMonth(SparkJob):
             df = df.withColumn(header, F.element_at("data", header))
 
         db = DataSet([
-            DataTable("raw_monthly", df, "noaa")
+            DataTable("noaa", "raw_monthly", df, "overwrite")
         ])
 
         return db
-
-    def write(self, data: DataSet):
-        data.write_table("raw_monthly", "overwrite")
 
 
 class GlobalMonthlyWeather(SparkJob):
@@ -113,9 +110,8 @@ class GlobalMonthlyWeather(SparkJob):
         super().__init__("global_monthly_weather")
 
     def read(self) -> DataSet:
-        raw_monthly = self.spark.table("noaa.raw_monthly")
         return DataSet([
-            DataTable("raw_monthly", raw_monthly, "noaa")
+            DataTable("noaa", "raw_monthly")
         ])
 
     def transform(self, read_data: DataSet) -> DataSet:
@@ -155,13 +151,10 @@ class GlobalMonthlyWeather(SparkJob):
         measurements = raw.df.select(select_measurements)
 
         transformed = DataSet([
-            DataTable("global_monthly_weather", measurements, "noaa"),
+            DataTable("noaa", "global_monthly_weather", measurements, "overwrite"),
         ])
 
         return transformed
-
-    def write(self, data: DataSet):
-        data.write_table("global_monthly_weather", "overwrite")
 
 
 class GlobalMonthlyWeatherTrends(SparkJob):
@@ -171,7 +164,7 @@ class GlobalMonthlyWeatherTrends(SparkJob):
 
     def read(self) -> DataSet:
         return DataSet([
-            DataTable("global_monthly_weather", self.spark.table("noaa.global_monthly_weather")),
+            DataTable("noaa", "global_monthly_weather"),
         ])
 
     def transform(self, read_data: DataSet) -> DataSet:
@@ -215,8 +208,35 @@ class GlobalMonthlyWeatherTrends(SparkJob):
         # TODO add linear regressions to trends
 
         return DataSet([
-            DataTable(f"global_monthly_weather_trends", trends, "noaa")
+            DataTable("noaa", "global_monthly_weather_trends", trends, "overwrite")
         ])
 
-    def write(self, data: DataSet):
-        data.write_table("global_monthly_weather_trends", "overwrite")
+
+class TrendStationsQualified(SparkJob):
+
+    def __init__(self):
+        super().__init__("trend_stations_qualified")
+
+    def read(self) -> DataSet:
+        return DataSet([
+            DataTable("noaa", "global_monthly_weather_trends")
+        ])
+
+    def transform(self, read_data: DataSet) -> DataSet:
+
+        trends = read_data.get_table("global_monthly_weather_trends")
+
+        qualified = (
+            trends
+            .groupBy("ghcn_id")
+            .agg(
+                F.count("avg10_average_daily_temperature").alias("avg10_temperature_count"),
+                F.count("avg10_total_precipitation").alias("avg10_precipitation_count"),
+            )
+        )
+
+        write = [
+            DataTable("noaa", "global_stations_qualified", qualified, "overwrite")
+        ]
+
+        return DataSet(write)
