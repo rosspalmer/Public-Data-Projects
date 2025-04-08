@@ -288,6 +288,8 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkJob):
                         ).alias(c) for c in collect_columns])
                 ).alias("json_2")
             )
+            .withColumn("json_2", F.regexp_replace("json_2", '"0":','"x":'))
+            .withColumn("json_2", F.regexp_replace("json_2", '"1":', '"y":'))
         )
 
         return DataSet([
