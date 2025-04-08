@@ -271,13 +271,15 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkJob):
             trends
             .join(stations, "ghcn_id", "inner")
             .join(measurements, ["ghcn_id", "year", "month"], "left")
-            .orderBy("year")
             .groupBy("ghcn_id", "month")
-            .agg(*[F.collect_list(c).alias(c) for c in collect_columns])
+            .agg(F.collect_list(F.struct(*collect_columns)).alias('data'))
+            .withColumn("data", F.sort_array("data"))
             .select(
-                "ghcn_id",
-                "month",
-                F.to_json(F.struct(*collect_columns)).alias("json")
+                F.col("ghcn_id"),
+                F.col("month"),
+                F.to_json(
+                    F.struct(*[F.col(f"data").getField(c).alias(c) for c in collect_columns])
+                ).alias("json")
             )
         )
 
