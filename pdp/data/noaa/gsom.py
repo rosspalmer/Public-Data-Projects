@@ -177,7 +177,7 @@ class GlobalMonthlyWeatherTrends(SparkJob):
         )
 
         station_range: DataFrame = measurements.select("ghcn_id").distinct()
-        years_range: DataFrame = self.spark.createDataFrame(data=[Row(year=y) for y in range(1900, 2025)])
+        years_range: DataFrame = self.spark.createDataFrame(data=[Row(year=y) for y in range(1850, 2025)])
         months_range: DataFrame = self.spark.createDataFrame(data=[Row(month=m) for m in range(1, 13)])
         full_data_range: DataFrame = station_range.crossJoin(years_range).crossJoin(months_range)
 
@@ -194,7 +194,7 @@ class GlobalMonthlyWeatherTrends(SparkJob):
         trend_columns = ([F.col("ghcn_id"), F.col("month_id"), F.col("date_month_start"),
                          F.col("year"), F.col("month")] +
         [
-            F.when(F.count(c).over(w) == F.lit(n), F.avg(c).over(w).cast("decimal(16,3)")).alias(f"avg{n}_{c}")
+            F.when(F.count(c).over(w) == F.lit(n), F.avg(c).over(w).cast("decimal(16,3)")).alias(f"{c}_avg{n}")
             for c in measurement_column_names
             for n, w in trend_windows.items()
         ])
@@ -208,7 +208,7 @@ class GlobalMonthlyWeatherTrends(SparkJob):
         # TODO add linear regressions to trends
 
         return DataSet([
-            DataTable("noaa", "global_monthly_weather_trends", trends, "overwrite")
+            DataTable("noaa", "global_monthly_weather_rolling", trends, "overwrite")
         ])
 
 
@@ -219,19 +219,19 @@ class TrendStationsQualified(SparkJob):
 
     def read(self) -> DataSet:
         return DataSet([
-            DataTable("noaa", "global_monthly_weather_trends")
+            DataTable("noaa", "global_monthly_weather_rolling")
         ])
 
     def transform(self, read_data: DataSet) -> DataSet:
 
-        trends = read_data.get_table("global_monthly_weather_trends").df
+        trends = read_data.get_table("global_monthly_weather_rolling").df
 
         qualified = (
             trends
             .groupBy("ghcn_id")
             .agg(
-                F.count("avg10_average_daily_temperature").alias("avg10_temperature_count"),
-                F.count("avg10_total_precipitation").alias("avg10_precipitation_count"),
+                F.count("average_daily_temperature_avg10").alias("temperature_count_avg10"),
+                F.count("total_precipitation_avg10").alias("precipitation_count_avg10"),
             )
         )
 
@@ -260,12 +260,12 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkJob):
         measurements = read_data.get_table("global_monthly_weather").df
         trends = read_data.get_table("global_monthly_weather_trends").df
 
-        stations = stations.filter("avg10_temperature_count >= 800").select("ghcn_id")
+        stations = stations.filter("temperature_count_avg10 >= 1200").select("ghcn_id")
 
-        collect_columns = ["year", "average_daily_temperature", "avg10_average_daily_temperature",
-                           "average_daily_min_temperature", "avg10_average_daily_min_temperature",
-                           "average_daily_max_temperature", "avg10_average_daily_max_temperature",
-                           "total_precipitation", "avg10_total_precipitation"]
+        collect_columns = ["year", "average_daily_temperature", "average_daily_temperature_avg10",
+                           "average_daily_min_temperature", "average_daily_min_temperature_avg10",
+                           "average_daily_max_temperature", "average_daily_max_temperature_avg10",
+                           "total_precipitation", "total_precipitation_avg10"]
 
         frontend = (
             trends
