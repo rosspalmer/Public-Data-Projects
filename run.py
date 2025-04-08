@@ -14,13 +14,13 @@ from pdp.data.noaa.stations import SurfaceWeatherStations
 # job = GlobalMonthlyWeather()
 # job.run()
 #
-# print("global-monthly-weather-trends")
-# job = GlobalMonthlyWeatherTrends()
-# job.run()
-#
-# print("global-monthly-weather-trends")
-# job = TrendStationsQualified()
-# job.run()
+print("global-monthly-weather-trends")
+job = GlobalMonthlyWeatherTrends()
+job.run()
+
+print("global-monthly-weather-trends")
+job = TrendStationsQualified()
+job.run()
 
 print("frontend")
 job = GlobalMonthlyWeatherTrendsFrontend()
