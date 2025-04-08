@@ -1,12 +1,12 @@
 from pdp.data.data import DataSet, DataTable
-from pdp.data.job import SparkJob
+from pdp.data.job import SparkTask
 
 import pyspark.sql.functions as F
 
 import reverse_geocode
 
 
-class SurfaceWeatherStations(SparkJob):
+class SurfaceWeatherStations(SparkTask):
 
     def __init__(self, ncei_data_folder: str):
         super().__init__("surface-stations")

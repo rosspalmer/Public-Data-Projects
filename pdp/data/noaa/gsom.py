@@ -9,10 +9,10 @@ from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.window import Window
 
 from pdp.data.data import DataSet, DataTable
-from pdp.data.job import SparkJob
+from pdp.data.job import SparkTask
 
 
-class ParseGlobalSummaryOfMonth(SparkJob):
+class ParseGlobalSummaryOfMonth(SparkTask):
 
     def __init__(self, data_folder_path: str):
         super().__init__("raw_global_summary_of_month")
@@ -69,7 +69,7 @@ class ParseGlobalSummaryOfMonth(SparkJob):
         return db
 
 
-class GlobalMonthlyWeather(SparkJob):
+class GlobalMonthlyWeather(SparkTask):
     MEASUREMENT_COLUMNS = {
         "TAVG": ("average_daily_temperature", "decimal(16,3)", "a,S"),
         "TMAX": ("average_daily_max_temperature", "decimal(16,3)", "a,S"),
@@ -157,7 +157,7 @@ class GlobalMonthlyWeather(SparkJob):
         return transformed
 
 
-class GlobalMonthlyWeatherTrends(SparkJob):
+class GlobalMonthlyWeatherTrends(SparkTask):
 
     def __init__(self):
         super().__init__("global_monthly_weather_trends")
@@ -212,7 +212,7 @@ class GlobalMonthlyWeatherTrends(SparkJob):
         ])
 
 
-class TrendStationsQualified(SparkJob):
+class TrendStationsQualified(SparkTask):
 
     def __init__(self):
         super().__init__("trend_stations_qualified")
@@ -242,7 +242,7 @@ class TrendStationsQualified(SparkJob):
         return DataSet(write)
 
 
-class GlobalMonthlyWeatherTrendsFrontend(SparkJob):
+class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
 
     def __init__(self):
         super().__init__("global_monthly_weather_trends_frontend")
