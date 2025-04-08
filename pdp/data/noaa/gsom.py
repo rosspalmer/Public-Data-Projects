@@ -279,7 +279,16 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkJob):
                 F.col("month"),
                 F.to_json(
                     F.struct(*[F.col(f"data").getField(c).alias(c) for c in collect_columns])
-                ).alias("json")
+                ).alias("json"),
+                F.to_json(
+                    F.struct(*[
+                        F.create_map(
+                            F.lit("x"),
+                            F.col("data").getField("year"),
+                            F.lit("y"),
+                            F.col(f"data").getField(c)
+                        ).alias(c) for c in collect_columns])
+                ).alias("json_2")
             )
         )
 
