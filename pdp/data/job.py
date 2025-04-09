@@ -45,21 +45,21 @@ class SparkJob:
         self.task_dependencies: list[tuple[str, str]] = []
 
     def __enter__(self):
-        # self.spark = (
-        #    SparkSession.builder
-        #    .master("spark://10.0.0.2:7077")
-        #    .appName(self.name)
-        #    .config("spark.sql.warehouse.dir", "file:/mnt/lake-fs/spark-warehouse")
-        #    .config("spark.databricks.delta.schema.autoMerge.enabled", True)
-        #    .enableHiveSupport()
-        #    .getOrCreate()
-        # )
         self.spark = (
-            SparkSession.builder
-            .master("local")
-            .appName(self.name)
-            .getOrCreate()
+           SparkSession.builder
+           .master("spark://10.0.0.2:7077")
+           .appName(self.name)
+           .config("spark.sql.warehouse.dir", "file:/mnt/lake-fs/spark-warehouse")
+           .config("spark.databricks.delta.schema.autoMerge.enabled", True)
+           .enableHiveSupport()
+           .getOrCreate()
         )
+        # self.spark = (
+        #     SparkSession.builder
+        #     .master("local")
+        #     .appName(self.name)
+        #     .getOrCreate()
+        # )
         JobContext.push(self)
 
     def __exit__(self, exc_type, exc_value, traceback):
