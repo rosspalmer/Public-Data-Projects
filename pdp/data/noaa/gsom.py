@@ -251,7 +251,7 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
         return DataSet([
             DataTable("noaa", "global_stations_trend_counts"),
             DataTable("noaa", "global_monthly_weather"),
-            DataTable("noaa", "global_monthly_weather_trends")
+            DataTable("noaa", "global_monthly_weather_rolling")
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
