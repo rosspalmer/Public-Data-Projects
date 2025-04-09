@@ -1,6 +1,6 @@
 from pdp.data.noaa.gsom import TrendStationsQualified, GlobalMonthlyWeatherTrendsFrontend, GlobalMonthlyWeather, \
     GlobalMonthlyWeatherTrends
-from pdp.data.noaa.stations import SurfaceWeatherStations
+# from pdp.data.noaa.stations import SurfaceWeatherStations
 
 # print("stations")
 # job = SurfaceWeatherStations("/mnt/lake-fs/raw/gov/noaa/ncei")
@@ -16,12 +16,13 @@ from pdp.data.noaa.stations import SurfaceWeatherStations
 #
 print("global-monthly-weather-trends")
 job = GlobalMonthlyWeatherTrends()
-job.run()
+# job.run()
 
 print("global-monthly-weather-trends")
 job = TrendStationsQualified()
-job.run()
+# job.run()
 
 print("frontend")
 job = GlobalMonthlyWeatherTrendsFrontend()
-job.run()
+# job.run()
+

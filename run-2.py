@@ -7,13 +7,7 @@ from pdp.data.noaa.gsom import TrendStationsQualified, GlobalMonthlyWeatherTrend
 with SparkJob("big-homes") as job:
     parse = ParseGlobalSummaryOfMonth("/mnt/lake-fs/raw/gov/noaa/ncei/gsom")
     # stations = SurfaceWeatherStations("")
-
-
-# print("stations")
-# job = SurfaceWeatherStations("/mnt/lake-fs/raw/gov/noaa/ncei")
-# job.run()
-
-#
-# print("global-monthly-weather")
-# job = GlobalMonthlyWeather()
-# job.run()
+    monthly_weather = GlobalMonthlyWeather()
+    monthly_weather_trends = GlobalMonthlyWeatherTrends()
+    stations_qualified = TrendStationsQualified()
+    frontend = GlobalMonthlyWeatherTrendsFrontend()

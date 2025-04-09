@@ -107,7 +107,7 @@ class GlobalMonthlyWeather(SparkTask):
     }
 
     def __init__(self):
-        super().__init__("global_monthly_weather")
+        super().__init__("monthly-weather")
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
@@ -160,7 +160,7 @@ class GlobalMonthlyWeather(SparkTask):
 class GlobalMonthlyWeatherTrends(SparkTask):
 
     def __init__(self):
-        super().__init__("global_monthly_weather_trends")
+        super().__init__("monthly-weather-trends")
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
@@ -177,8 +177,8 @@ class GlobalMonthlyWeatherTrends(SparkTask):
         )
 
         station_range: DataFrame = measurements.select("ghcn_id").distinct()
-        years_range: DataFrame = self.spark.createDataFrame(data=[Row(year=y) for y in range(1850, 2025)])
-        months_range: DataFrame = self.spark.createDataFrame(data=[Row(month=m) for m in range(1, 13)])
+        years_range: DataFrame = spark.createDataFrame(data=[Row(year=y) for y in range(1850, 2025)])
+        months_range: DataFrame = spark.createDataFrame(data=[Row(month=m) for m in range(1, 13)])
         full_data_range: DataFrame = station_range.crossJoin(years_range).crossJoin(months_range)
 
         measurement_column_names = [v[0]
@@ -215,7 +215,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
 class TrendStationsQualified(SparkTask):
 
     def __init__(self):
-        super().__init__("trend_stations_qualified")
+        super().__init__("trend-stations-qualified")
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
@@ -245,7 +245,7 @@ class TrendStationsQualified(SparkTask):
 class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
 
     def __init__(self):
-        super().__init__("global_monthly_weather_trends_frontend")
+        super().__init__("weather-frontend")
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
