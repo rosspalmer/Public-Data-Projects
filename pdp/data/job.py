@@ -12,9 +12,8 @@ from pdp.data.data import DataSet
 
 class SparkTask(ABC):
 
-    def __init__(self, name: str):
-        self.name = name
-        self.spark = SparkSession.getActiveSession()
+    def __init__(self, task_id: str):
+        self.task_id = task_id
         job = JobContext.get_current_job()
         if job is not None:
             job.add_task(self)
@@ -22,19 +21,19 @@ class SparkTask(ABC):
             print(f'WARN task not added to job')
 
     @abstractmethod
-    def read(self) -> DataSet:
+    def read(self, spark: SparkSession) -> DataSet:
         pass
 
     @abstractmethod
-    def transform(self, read_data: DataSet) -> DataSet:
+    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
         pass
 
-    def run(self):
+    def run(self, spark: SparkSession):
 
-        read_dataset: DataSet = self.read()
-        read_dataset.read_empty_tables(self.spark)
+        read_dataset: DataSet = self.read(spark)
+        read_dataset.read_empty_tables(spark)
 
-        write_dataset: DataSet = self.transform(read_dataset)
+        write_dataset: DataSet = self.transform(spark, read_dataset)
         write_dataset.write_all_tables()
 
 class SparkJob:
@@ -42,7 +41,7 @@ class SparkJob:
     def __init__(self, name: str):
         self.name = name
         self.spark: SparkSession | None = None
-        self.tasks: set[SparkTask] = set()
+        self.tasks: list[SparkTask] = list()
         self.task_dependencies: list[tuple[str, str]] = []
 
     def __enter__(self):
@@ -64,14 +63,19 @@ class SparkJob:
         JobContext.push(self)
 
     def __exit__(self, exc_type, exc_value, traceback):
+
+        for task in self.tasks:
+            print(task.task_id)
+            task.run(self.spark)
+
         # TODO
         self.spark.stop()
 
     def add_task(self, task: SparkTask):
-        self.tasks.add(task)
+        self.tasks.append(task)
 
-    def add_task_dependencies(self, task_before: SparkTask, task_after: SparkTask):
-        self.task_dependencies.append((task_before.name, task_after.name))
+    def add_task_dependency(self, task_before: SparkTask, task_after: SparkTask):
+        self.task_dependencies.append((task_before.task_id, task_after.task_id))
 
 
 # Mocking Airflow pattern from here: task-sdk/src/airflow/sdk/definitions/_internal/contextmanager.py

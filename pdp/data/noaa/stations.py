@@ -1,3 +1,5 @@
+from pyspark.sql import SparkSession
+
 from pdp.data.data import DataSet, DataTable
 from pdp.data.job import SparkTask
 
@@ -12,7 +14,7 @@ class SurfaceWeatherStations(SparkTask):
         super().__init__("surface-stations")
         self.ncei_data_folder = ncei_data_folder
 
-    def read(self) -> DataSet:
+    def read(self, spark: SparkSession) -> DataSet:
 
         self.spark.sql("CREATE SCHEMA IF NOT EXISTS noaa")
 
@@ -33,7 +35,7 @@ class SurfaceWeatherStations(SparkTask):
             DataTable("noaa", "raw_global_stations", raw, "overwrite")
         ])
 
-    def transform(self, read_data: DataSet) -> DataSet:
+    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
         raw = read_data.get_table("raw_global_stations").df
         stations = [(r.ghcn_id, (r.lat, r.long)) for r in raw.collect()]
@@ -41,7 +43,7 @@ class SurfaceWeatherStations(SparkTask):
         coords = [x[1] for x in stations]
 
         lookups = zip(ids, reverse_geocode.search(coords))
-        lookup_df = self.spark.createDataFrame(
+        lookup_df = spark.createDataFrame(
             data=lookups,
             schema="ghcn_id string, data map<string, string>"
         ).persist()

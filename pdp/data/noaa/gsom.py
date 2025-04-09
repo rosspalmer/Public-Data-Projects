@@ -4,7 +4,7 @@ from typing import Iterator
 
 import pandas as pd
 import pyspark.sql.functions as F
-from pyspark.sql import Row
+from pyspark.sql import Row, SparkSession
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.window import Window
 
@@ -15,17 +15,17 @@ from pdp.data.job import SparkTask
 class ParseGlobalSummaryOfMonth(SparkTask):
 
     def __init__(self, data_folder_path: str):
-        super().__init__("raw_global_summary_of_month")
+        super().__init__('parse-gsom')
         self.data_folder_path = data_folder_path
 
-    def read(self) -> DataSet:
+    def read(self, spark: SparkSession) -> DataSet:
 
         read_files = [Row(file=f'{self.data_folder_path}/{f}', ghcn_id=f[:-4])
                       for f in os.listdir(self.data_folder_path)
                       if f.endswith(".csv")]
 
         df = (
-            self.spark.createDataFrame(data=read_files)
+            spark.createDataFrame(data=read_files)
             .repartition(50)
         )
 
@@ -41,7 +41,7 @@ class ParseGlobalSummaryOfMonth(SparkTask):
         ])
 
 
-    def transform(self, read_data: DataSet) -> DataSet:
+    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
         df = read_data.get_table("pandas_read").df.persist()
 
@@ -109,12 +109,12 @@ class GlobalMonthlyWeather(SparkTask):
     def __init__(self):
         super().__init__("global_monthly_weather")
 
-    def read(self) -> DataSet:
+    def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
             DataTable("noaa", "raw_monthly")
         ])
 
-    def transform(self, read_data: DataSet) -> DataSet:
+    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
         raw = read_data.get_table("raw_monthly")
 
@@ -162,12 +162,12 @@ class GlobalMonthlyWeatherTrends(SparkTask):
     def __init__(self):
         super().__init__("global_monthly_weather_trends")
 
-    def read(self) -> DataSet:
+    def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
             DataTable("noaa", "global_monthly_weather"),
         ])
 
-    def transform(self, read_data: DataSet) -> DataSet:
+    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
         measurements = (
             read_data
@@ -217,12 +217,12 @@ class TrendStationsQualified(SparkTask):
     def __init__(self):
         super().__init__("trend_stations_qualified")
 
-    def read(self) -> DataSet:
+    def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
             DataTable("noaa", "global_monthly_weather_rolling")
         ])
 
-    def transform(self, read_data: DataSet) -> DataSet:
+    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
         trends = read_data.get_table("global_monthly_weather_rolling").df
 
@@ -247,14 +247,14 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
     def __init__(self):
         super().__init__("global_monthly_weather_trends_frontend")
 
-    def read(self) -> DataSet:
+    def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
             DataTable("noaa", "global_stations_trend_counts"),
             DataTable("noaa", "global_monthly_weather"),
             DataTable("noaa", "global_monthly_weather_trends")
         ])
 
-    def transform(self, read_data: DataSet) -> DataSet:
+    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
         stations = read_data.get_table("global_stations_trend_counts").df
         measurements = read_data.get_table("global_monthly_weather").df
