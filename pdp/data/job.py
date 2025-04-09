@@ -1,43 +1,25 @@
 from abc import ABC, abstractmethod
-import sys
-
 from collections import deque
+from types import ModuleType
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
+import sys
 
 
 from pyspark.sql import SparkSession
 
 from pdp.data.data import DataSet
-from pdp.data.spark import SharedSpark
 
 
-class SparkJob:
+class SparkTask(ABC):
 
     def __init__(self, name: str):
         self.name = name
-        self.spark: SparkSession | None = None
-        self.task_dag: TaskDAG = None
-
-    def __enter__(self):
-        self.spark = (
-           SparkSession.builder
-           .master("spark://10.0.0.2:7077")
-           .appName(self.name)
-           .config("spark.sql.warehouse.dir", "file:/mnt/lake-fs/spark-warehouse")
-           .config("spark.databricks.delta.schema.autoMerge.enabled", True)
-           .enableHiveSupport()
-           .getOrCreate()
-        )
-
-
-    def __exit__(self, exc_type, exc_value, traceback):
-
-        self.file.close()
-
-
-class SparkTask(SharedSpark, ABC):
-
-    def __init__(self, app_name: str):
-        super().__init__(app_name)
+        self.spark = SparkSession.getActiveSession()
+        job = JobContext.get_current_job()
+        if job is not None:
+            job.add_task(self)
+        else:
+            print(f'WARN task not added to job')
 
     @abstractmethod
     def read(self) -> DataSet:
@@ -55,34 +37,74 @@ class SparkTask(SharedSpark, ABC):
         write_dataset: DataSet = self.transform(read_dataset)
         write_dataset.write_all_tables()
 
-# Mocking Airflow paterrn from here: task-sdk/src/airflow/sdk/definitions/_internal/contextmanager.py
-# class ContextStack(Generic[T], metaclass=ContextStackMeta):
-#     _context: deque[T]
-#
-#     @classmethod
-#     def push(cls, obj: T):
-#         cls._context.appendleft(obj)
-#
-#     @classmethod
-#     def pop(cls) -> T | None:
-#         return cls._context.popleft()
-#
-#     @classmethod
-#     def get_current(cls) -> T | None:
-#         try:
-#             return cls._context[0]
-#         except IndexError:
-#             return None
+class SparkJob:
+
+    def __init__(self, name: str):
+        self.name = name
+        self.spark: SparkSession | None = None
+        self.tasks: set[SparkTask] = set()
+        self.task_dependencies: list[tuple[str, str]] = []
+
+    def __enter__(self):
+        # self.spark = (
+        #    SparkSession.builder
+        #    .master("spark://10.0.0.2:7077")
+        #    .appName(self.name)
+        #    .config("spark.sql.warehouse.dir", "file:/mnt/lake-fs/spark-warehouse")
+        #    .config("spark.databricks.delta.schema.autoMerge.enabled", True)
+        #    .enableHiveSupport()
+        #    .getOrCreate()
+        # )
+        self.spark = (
+            SparkSession.builder
+            .master("local")
+            .appName(self.name)
+            .getOrCreate()
+        )
+        JobContext.push(self)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        # TODO
+        self.spark.stop()
+
+    def add_task(self, task: SparkTask):
+        self.tasks.add(task)
+
+    def add_task_dependencies(self, task_before: SparkTask, task_after: SparkTask):
+        self.task_dependencies.append((task_before.name, task_after.name))
 
 
-class JobContext(Generic[SparkJob], metaclass=ContextStackMeta):
-    _job_queue: deque[SparkJob]
+# Mocking Airflow pattern from here: task-sdk/src/airflow/sdk/definitions/_internal/contextmanager.py
+
+# In order to add a `@classproperty`-like thing we need to define a property on a metaclass.
+class ContextStackMeta(type):
+    _context: deque
+
+    # TODO: Task-SDK:
+    # share_parent_context can go away once the DAG and TaskContext manager in airflow.models are removed and
+    # everything uses sdk fully for definition/parsing
+    def __new__(cls, name, bases, namespace, share_parent_context: bool = False, **kwargs: Any):
+        if not share_parent_context:
+            namespace["_context"] = deque()
+
+        new_cls = super().__new__(cls, name, bases, namespace, **kwargs)
+
+        return new_cls
+
+    @property
+    def active(self) -> bool:
+        """The active property says if any object is currently in scope."""
+        return bool(self._context)
+
+
+class JobContext(metaclass=ContextStackMeta):
+    _context: deque[SparkJob]
     autoregistered_dags: set[tuple[SparkJob, ModuleType]] = set()
     current_autoregister_module_name: str | None = None
 
     @classmethod
     def pop(cls) -> SparkJob | None:
-        job = cls._job_queue.popleft()
+        job = cls._context.popleft()
         # In a few cases around serialization we explicitly push None in to the stack
         if cls.current_autoregister_module_name is not None and job and getattr(job, "auto_register", True):
             mod = sys.modules[cls.current_autoregister_module_name]
@@ -90,8 +112,12 @@ class JobContext(Generic[SparkJob], metaclass=ContextStackMeta):
         return job
 
     @classmethod
+    def push(cls, job: SparkJob):
+        cls._context.appendleft(job)
+
+    @classmethod
     def get_current_job(cls) -> SparkJob | None:
         try:
-            return cls._job_queue[0]
+            return cls._context[0]
         except IndexError:
             return None
