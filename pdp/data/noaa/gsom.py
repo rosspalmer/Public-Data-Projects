@@ -258,7 +258,7 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
 
         stations = read_data.get_table("global_stations_trend_counts").df
         measurements = read_data.get_table("global_monthly_weather").df
-        trends = read_data.get_table("global_monthly_weather_trends").df
+        trends = read_data.get_table("global_monthly_weather_rolling").df
 
         stations = stations.filter("temperature_count_avg10 >= 1200").select("ghcn_id")
 
