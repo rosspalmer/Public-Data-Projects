@@ -9,5 +9,5 @@ with SparkJob("big-homes") as job:
     # stations = SurfaceWeatherStations("")
     # monthly_weather = GlobalMonthlyWeather()
     # monthly_weather_trends = GlobalMonthlyWeatherTrends()
-    stations_qualified = TrendStationsQualified()
+    # stations_qualified = TrendStationsQualified()
     frontend = GlobalMonthlyWeatherTrendsFrontend()

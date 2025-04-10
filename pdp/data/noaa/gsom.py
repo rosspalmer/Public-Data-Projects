@@ -1,11 +1,13 @@
 
 import os
+import re
 from typing import Iterator
 
 import pandas as pd
 import pyspark.sql.functions as F
 from pyspark.sql import Row, SparkSession
 from pyspark.sql.dataframe import DataFrame
+from pyspark.sql.types import StructType
 from pyspark.sql.window import Window
 
 from pdp.data.data import DataSet, DataTable
@@ -262,35 +264,76 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
 
         stations = stations.filter("temperature_count_avg10 >= 1200").select("ghcn_id")
 
-        collect_columns = ["year", "average_daily_temperature", "average_daily_temperature_avg10",
-                           "average_daily_min_temperature", "average_daily_min_temperature_avg10",
-                           "average_daily_max_temperature", "average_daily_max_temperature_avg10",
-                           "total_precipitation", "total_precipitation_avg10"]
+        rolling_n = [5, 10]
+        measurement_columns = [
+            "average_daily_temperature",
+            "average_daily_min_temperature",
+            "average_daily_max_temperature",
+            "average_wet_bulb_temperature",
+            "average_wind_speed",
+            "total_precipitation",
+            "total_snowfall",
+            "days_with_fog",
+            "days_with_heavy_fog",
+            "days_with_thunderstorm"
+        ]
 
-        frontend = (
+        base_data = (
             trends
             .join(stations, "ghcn_id", "inner")
             .join(measurements, ["ghcn_id", "year", "month"], "left")
             .groupBy("ghcn_id", "month")
-            .agg(F.collect_list(F.struct(*collect_columns)).alias('data'))
-            .withColumn("data", F.sort_array("data"))
-            .select(
-                F.col("ghcn_id"),
-                F.col("month"),
-                F.to_json(
-                    F.struct(*[F.col(f"data").getField(c).alias(c) for c in collect_columns])
-                ).alias("json"),
-                F.to_json(
-                    F.struct(*[
-                        F.arrays_zip(
-                        F.col("data").getField("year"),
-                            F.col(f"data").getField(c)
-                        ).alias(c) for c in collect_columns])
-                ).alias("json_2")
-            )
-            .withColumn("json_2", F.regexp_replace("json_2", '"0":','"x":'))
-            .withColumn("json_2", F.regexp_replace("json_2", '"1":', '"y":'))
         )
+
+        frontend = spark.createDataFrame(data=[], schema=StructType([]))
+        for years in rolling_n:
+
+            collect_columns = ['year'] + [
+                f'{c}{suffix}'
+                for suffix in ['', f'_avg{years}']
+                for c in measurement_columns
+            ]
+
+            frontend_years = (
+                base_data
+                .agg(F.collect_list(F.struct(*collect_columns)).alias('data'))
+                .withColumn("data", F.sort_array("data"))
+                .select(
+                    F.col("ghcn_id"),
+                    F.col("month"),
+                    F.lit(years).alias("rolling_n"),
+                    F.to_json(
+                        F.struct(*[
+                            F.col(f"data").getField(c).alias(re.sub(r'_avg\d+$', '_avg', c))
+                            for c in collect_columns
+                        ])
+                    ).alias("json")
+                )
+            )
+
+            frontend = frontend.unionByName(frontend_years, allowMissingColumns=True)
+        #
+        # frontend = (
+        #     base_data
+        #     .agg(F.collect_list(F.struct(*collect_columns)).alias('data'))
+        #     .withColumn("data", F.sort_array("data"))
+        #     .select(
+        #         F.col("ghcn_id"),
+        #         F.col("month"),
+        #         F.to_json(
+        #             F.struct(*[F.col(f"data").getField(c).alias(c) for c in collect_columns])
+        #         ).alias("json"),
+        #         F.to_json(
+        #             F.struct(*[
+        #                 F.arrays_zip(
+        #                 F.col("data").getField("year"),
+        #                     F.col(f"data").getField(c)
+        #                 ).alias(c) for c in collect_columns])
+        #         ).alias("json_2")
+        #     )
+        #     .withColumn("json_2", F.regexp_replace("json_2", '"0":','"x":'))
+        #     .withColumn("json_2", F.regexp_replace("json_2", '"1":', '"y":'))
+        # )
 
         return DataSet([
             DataTable("noaa", "global_monthly_trends_frontend", frontend, "overwrite")
