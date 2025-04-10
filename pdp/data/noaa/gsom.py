@@ -311,10 +311,9 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
                             ]
                     ]).alias("json")
                 )
-                # .withColumn("json", F.to_json(
-                #     # F.map_filter("json", lambda k,v: F.array_size(F.array_compact(v)) > F.lit(0))
-                #
-                # ))
+                .withColumn("json", F.to_json(
+                    F.map_filter("json", lambda k,v: F.array_size(F.array_compact(v)) > F.lit(0))
+                ))
             )
 
             frontend = frontend.unionByName(frontend_years, allowMissingColumns=True)
