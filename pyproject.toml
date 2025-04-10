@@ -5,6 +5,22 @@ authors = [
   {name="Ross Palmer", email="rossbpalmer@gmail.com"},
   {name="Hannah Glazier", email="glazierhannah@gmail.com"}
 ]
+
+dependencies = [
+  "typer",
+  "fastapi",
+  "uvicorn",
+  "pyspark",
+  "py4j",
+  "pandas",
+  "geopandas",
+  "pyarrow",
+  "numpy",
+  "reverse-geocode",
+  "jupyterlab",
+  "plotly"
+]
+
 description = "Application for Public Data Projects"
 readme = "README.md"
 
@@ -15,17 +31,17 @@ Homepage="https://github.com/rosspalmer/Public-Data-Projects"
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[poetry.dependencies]
-python = ">=3.11,<3.14"
-typer = "^0.15.1"
-fastapi = "0.115.12"
-uvicorn = "0.34.0"
-pyspark = "3.5.5"
-py4j = ">=0.10.9.7"
-pandas = ">=1.0.5"
-geopandas = "=1.0.1"
-pyarrow = ">=4.0.0,<13.0.0"
-numpy = ">=1.15"
-reverse-geocode = "1.6.5"
-jupyterlab = "4.4.0"
-matplotlib = "3.10.1"
+#[poetry.dependencies]
+#python = ">=3.11,<3.14"
+#typer = "^0.15.1"
+#fastapi = "0.115.12"
+#uvicorn = "0.34.0"
+#pyspark = "3.5.5"
+#py4j = ">=0.10.9.7"
+#pandas = ">=1.0.5"
+#geopandas = "=1.0.1"
+#pyarrow = ">=4.0.0,<13.0.0"
+#numpy = ">=1.15"
+#reverse-geocode = "1.6.5"
+#jupyterlab = "4.4.0"
+#matplotlib = "3.10.1"
