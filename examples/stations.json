@@ -1,0 +1,7 @@
+{
+	"stations": [
+		{"ghcn_id": "USC00051528", "lat": 39.2203, "long": -105.2783, "distance_mil": 0.23, "elevation_m": 2095, "name": "CHEESMAN", "city": "Bailey", "county": "Park County", "state": "Colorado"},
+		{"ghcn_id": "USC00053005", "lat": 40.5764, "long": -105.0858, "distance_mil": 120.0, "elevation_m": 1525, "name": "FT COLLINS", "city": "Fort Collins", "county": "Park County", "state": "Colorado"},
+		{"ghcn_id": "USC00051528", "lat": 37.1997, "long": -108.4892, "distance_mil": 230.0, "elevation_m": 2176, "name": "MESA VERDE NP", "city": "Cortez", "county": "Park County", "state": "Colorado"}
+	]
+}
