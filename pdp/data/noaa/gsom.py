@@ -262,7 +262,7 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
         measurements = read_data.get_table("global_monthly_weather").df
         trends = read_data.get_table("global_monthly_weather_rolling").df
 
-        stations = stations.filter("temperature_count_avg10 >= 1200").select("ghcn_id")
+        stations = stations.filter("temperature_count_avg10 >= 1000").select("ghcn_id")
 
         rolling_n = [5, 10]
         measurement_columns = [
@@ -302,13 +302,18 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
                     F.col("ghcn_id"),
                     F.col("month"),
                     F.lit(years).alias("rolling_n"),
-                    F.to_json(
-                        F.struct(*[
-                            F.col(f"data").getField(c).alias(re.sub(r'_avg\d+$', '_avg', c))
-                            for c in collect_columns
-                        ])
-                    ).alias("json")
+                    F.create_map(*[
+                            col
+                            for name in collect_columns
+                            for col in [
+                                F.lit(name),
+                                F.col(f"data").getField(name).alias(re.sub(r'_avg\d+$', '_avg', name))
+                            ]
+                    ]).alias("json")
                 )
+                .withColumn("json", F.to_json(
+                    F.map_filter("json", lambda k,v: F.array_size(F.array_compact(v)) > F.lit(0))
+                ))
             )
 
             frontend = frontend.unionByName(frontend_years, allowMissingColumns=True)
