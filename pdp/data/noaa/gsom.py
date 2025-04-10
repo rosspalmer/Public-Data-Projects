@@ -290,8 +290,8 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
 
             collect_columns = ['year'] + [
                 f'{c}{suffix}'
-                for suffix in ['', f'_avg{years}']
                 for c in measurement_columns
+                for suffix in ['', f'_avg{years}']
             ]
 
             frontend_years = (
@@ -306,8 +306,8 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
                             col
                             for name in collect_columns
                             for col in [
-                                F.lit(name),
-                                F.col(f"data").getField(name).alias(re.sub(r'_avg\d+$', '_avg', name))
+                                F.lit(re.sub(r'_avg\d+$', '_avg', name)),
+                                F.col(f"data").getField(name)
                             ]
                     ]).alias("json")
                 )
