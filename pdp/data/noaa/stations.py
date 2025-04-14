@@ -149,6 +149,8 @@ from shapely.geometry import MultiPoint
 
 class StationClusters(SparkTask):
 
+    def __init__(self):
+        super().__init__("station-clusters")
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
