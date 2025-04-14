@@ -18,7 +18,10 @@ dependencies = [
   "numpy",
   "reverse-geocode",
   "jupyterlab",
-  "plotly"
+  "plotly",
+  "scikit-learn",
+  "geopy",
+  "mariadb"
 ]
 
 description = "Application for Public Data Projects"

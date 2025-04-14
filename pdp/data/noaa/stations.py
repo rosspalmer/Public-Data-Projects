@@ -1,4 +1,5 @@
 from pyspark.sql import SparkSession
+from pyspark.sql.types import StringType
 
 from pdp.data.data import DataSet, DataTable
 from pdp.data.job import SparkTask
@@ -37,7 +38,27 @@ class SurfaceWeatherStations(SparkTask):
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
-        raw = read_data.get_table("raw_global_stations").df
+        network_code_map = {
+            "0": "unspecified",
+            "1": "community_rain_hail_snow",
+            "C": "us_cooperative_network",
+            "E": "euro_climate_assessment",
+            "M": "world_meteorological_org",
+            "N": "national_meteo_hydro_center",
+            "R": "raw",
+            "S": "us_snowpack",
+            "W": "wban"
+        }
+        network_name_udf = F.udf(lambda x: network_code_map[x], StringType())
+
+        raw = (
+            read_data.get_table("raw_global_stations").df
+            .withColumn("country_code", F.left("ghcn_id", F.lit(2)))
+            .withColumn("network_type_id", F.substring("ghcn_id", 2, 1))
+            .withColumn("network_name", network_name_udf(F.col("network_type_id")))
+            .withColumn("wban_id", F.when(F.col("network_type_id") == "W", F.right("ghcn_id", F.lit(5))))
+        )
+
         stations = [(r.ghcn_id, (r.lat, r.long)) for r in raw.collect()]
         ids = [x[0] for x in stations]
         coords = [x[1] for x in stations]
@@ -82,38 +103,84 @@ class SurfaceWeatherStations(SparkTask):
         ])
 
 
-class CityWeatherStations(SparkTask):
+# class CityWeatherStations(SparkTask):
+#
+#     def __init__(self):
+#         super().__init__("city-weather-stations")
+#
+#     def read(self, spark: SparkSession) -> DataSet:
+#
+#         return DataSet([
+#             DataTable("noaa", "global_stations")
+#         ])
+#
+#     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
+#
+#         stations = read_data.get_table("global_stations").df
+#
+#         city_lat_long = (
+#             stations
+#             .groupby("city", "state", "country")
+#             .agg(
+#                 F.element_at(F.collect_list("city_lat"), 1).alias("city_lat"),
+#                 F.element_at(F.collect_list("city_long"), 1).alias("city_long")
+#             )
+#         )
+#
+#         cities = (
+#             stations
+#             .groupby("city", "state", "country")
+#             .agg(
+#                 F.collect_set("ghcn_id").alias("station_ids")
+#             )
+#             .join(city_lat_long, ["city", "state", "country"])
+#             .withColumn("city_id", F.monotonically_increasing_id())
+#         )
+#
+#         return DataSet([DataTable("noaa", "city_stations", cities, "overwrite")])
 
-    def __init__(self):
-        super().__init__("city-weather-stations")
+
+import pandas as pd
+import numpy as np
+from sklearn.cluster import DBSCAN
+from geopy.distance import great_circle
+from shapely.geometry import MultiPoint
+
+
+class StationClusters(SparkTask):
+
 
     def read(self, spark: SparkSession) -> DataSet:
-
         return DataSet([
             DataTable("noaa", "global_stations")
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
-        stations = read_data.get_table("global_stations").df
-
-        city_lat_long = (
-            stations
-            .groupby("city", "state", "country")
-            .agg(
-                F.element_at(F.collect_list("city_lat"), 1).alias("city_lat"),
-                F.element_at(F.collect_list("city_long"), 1).alias("city_long")
-            )
+        stations = (
+            read_data.get_table("global_stations").df
+            .select("ghcn_id", "lat", "long")
+            .toPandas()
         )
+        coords = stations.as_matrix(columns=['lat', 'long'])
 
-        cities = (
-            stations
-            .groupby("city", "state", "country")
-            .agg(
-                F.collect_set("ghcn_id").alias("station_ids")
-            )
-            .join(city_lat_long, ["city", "state", "country"])
-            .withColumn("city_id", F.monotonically_increasing_id())
-        )
+        max_cluster_size_km = 30
+        kms_per_radian = 6371.0088
+        epsilon = max_cluster_size_km / kms_per_radian
 
-        return DataSet([DataTable("noaa", "city_stations", cities, "overwrite")])
+        min_samples = 3
+
+        db = DBSCAN(
+            eps=epsilon,
+            min_samples=min_samples,
+            algorithm='ball_tree',
+            metric='haversine'
+        )\
+        .fit(np.radians(coords))
+
+        cluster_labels = db.labels_
+        num_clusters = len(set(cluster_labels))
+        clusters = pd.Series([coords[cluster_labels == n] for n in range(num_clusters)])
+        print('Number of clusters: {}'.format(num_clusters))
+
+        return None
