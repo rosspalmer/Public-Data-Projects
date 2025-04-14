@@ -174,7 +174,9 @@ class GlobalMonthlyWeatherCity(SparkTask):
 
         measurements = read_data.get_table("global_monthly_weather").df
         measurement_columns = list(measurements.columns)
-        remove_columns = ["ghcn_id", "month_id", "date_month_start", "year", "month"]
+        remove_columns = ["ghcn_id", "month_id", "date_month_start", "year", "month",
+                          "date_of_extreme_minimum", "date_of_extreme_maximum",
+                          "date_of_max_snow_depth", "date_of_max_snowfall"]
         for c in remove_columns:
             measurement_columns.remove(c)
 
