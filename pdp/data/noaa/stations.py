@@ -16,10 +16,10 @@ class SurfaceWeatherStations(SparkTask):
 
     def read(self, spark: SparkSession) -> DataSet:
 
-        self.spark.sql("CREATE SCHEMA IF NOT EXISTS noaa")
+        spark.sql("CREATE SCHEMA IF NOT EXISTS noaa")
 
         raw = (
-            self.spark
+            spark
             .read
             .csv(f"{self.ncei_data_folder}/ghcnd-stations.csv")
             .withColumnsRenamed({
@@ -73,9 +73,46 @@ class SurfaceWeatherStations(SparkTask):
             .drop("state")
             .join(lookup_df, "ghcn_id", "left")
             .withColumns({k: F.col(k).cast(v) for k, v in cast_type.items()})
+            .withColumnsRenamed({"latitude": "city_lat", "longitude": "city_long"})
         )
 
         return DataSet([
             DataTable("noaa", "global_stations", with_geo_data, "overwrite"),
             read_data.get_table("raw_global_stations")
         ])
+
+
+class CityWeatherStations(SparkTask):
+
+    def __init__(self):
+        super().__init__("city-weather-stations")
+
+    def read(self, spark: SparkSession) -> DataSet:
+
+        return DataSet([
+            DataTable("noaa", "global_stations")
+        ])
+
+    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
+
+        stations = read_data.get_table("global_stations").df
+
+        city_lat_long = (
+            stations
+            .groupby("city", "state", "country")
+            .agg(
+                F.element_at(F.collect_list("city_lat"), 1).alias("city_lat"),
+                F.element_at(F.collect_list("city_long"), 1).alias("city_long")
+            )
+        )
+
+        cities = (
+            stations
+            .groupby("city", "state", "country")
+            .agg(
+                F.collect_set("ghcn_id").alias("ghcn_id")
+            )
+            .join(city_lat_long, ["city", "state", "country"])
+        )
+
+        return DataSet([DataTable("noaa", "city_stations", cities, "overwrite")])
