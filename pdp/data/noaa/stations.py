@@ -164,7 +164,7 @@ class StationClusters(SparkTask):
             .select("ghcn_id", "lat", "long")
             .toPandas()
         )
-        coords = stations[['lat', 'long']].values()
+        coords = stations[['lat', 'long']].to_numpy()
 
         max_cluster_size_km = 30
         kms_per_radian = 6371.0088
