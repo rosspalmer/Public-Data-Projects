@@ -110,9 +110,10 @@ class CityWeatherStations(SparkTask):
             stations
             .groupby("city", "state", "country")
             .agg(
-                F.collect_set("ghcn_id").alias("ghcn_id")
+                F.collect_set("ghcn_id").alias("station_ids")
             )
             .join(city_lat_long, ["city", "state", "country"])
+            .withColumn("city_id", F.monotonically_increasing_id())
         )
 
         return DataSet([DataTable("noaa", "city_stations", cities, "overwrite")])

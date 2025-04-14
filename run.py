@@ -1,28 +1,14 @@
-from pdp.data.noaa.gsom import TrendStationsQualified, GlobalMonthlyWeatherTrendsFrontend, GlobalMonthlyWeather, \
-    GlobalMonthlyWeatherTrends
-# from pdp.data.noaa.stations import SurfaceWeatherStations
+from pdp.data.job import SparkJob
+from pdp.data.noaa.gsom import GlobalMonthlyWeatherCity
+from pdp.data.noaa.stations import SurfaceWeatherStations, CityWeatherStations
 
-# print("stations")
-# job = SurfaceWeatherStations("/mnt/lake-fs/raw/gov/noaa/ncei")
-# job.run()
-#
-# print("gsom-parse")
-# job = ParseGlobalSummaryOfMonth("/mnt/lake-fs/raw/gov/noaa/ncei/gsom")
-# job.run()
-#
-# print("global-monthly-weather")
-# job = GlobalMonthlyWeather()
-# job.run()
-#
-print("global-monthly-weather-trends")
-job = GlobalMonthlyWeatherTrends()
-# job.run()
 
-print("global-monthly-weather-trends")
-job = TrendStationsQualified()
-# job.run()
-
-print("frontend")
-job = GlobalMonthlyWeatherTrendsFrontend()
-# job.run()
-
+with SparkJob("big-homes") as job:
+    # parse = ParseGlobalSummaryOfMonth("/mnt/lake-fs/raw/gov/noaa/ncei/gsom")
+    stations = SurfaceWeatherStations("/mnt/lake-fs/raw/gov/noaa/ncei")
+    city_stations = CityWeatherStations()
+    # monthly_weather = GlobalMonthlyWeather()
+    monthly_weather_city = GlobalMonthlyWeatherCity()
+    # monthly_weather_trends = GlobalMonthlyWeatherTrends()
+    # stations_qualified = TrendStationsQualified()
+    # frontend = GlobalMonthlyWeatherTrendsFrontend()

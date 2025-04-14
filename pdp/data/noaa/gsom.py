@@ -159,10 +159,70 @@ class GlobalMonthlyWeather(SparkTask):
         return transformed
 
 
-class GlobalMonthlyWeatherTrends(SparkTask):
+class GlobalMonthlyWeatherCity(SparkTask):
 
     def __init__(self):
-        super().__init__("monthly-weather-trends")
+        super().__init__("monthly-weather-city")
+
+    def read(self, spark: SparkSession) -> DataSet:
+        return DataSet([
+            DataTable("noaa", "city_stations"),
+            DataTable("noaa", "global_monthly_weather"),
+        ])
+
+    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
+
+        measurements = read_data.get_table("global_monthly_weather").df
+        measurement_columns = list(measurements.columns)
+        remove_columns = ["ghcn_id", "month_id", "date_month_start", "year", "month"]
+        for c in remove_columns:
+            measurement_columns.remove(c)
+
+        city_stations = (
+            read_data.get_table("city_stations").df
+            .select(
+                "city_id",
+                F.explode("station_ids").alias("ghcn_id")
+            )
+        )
+
+        # grouping_window = Window().partitionBy("ghcn_id", "month").orderBy("year")
+        # trend_windows = {n: grouping_window.rowsBetween(-(n-1), 0) for n in self.TREND_N_YEARS}
+
+        city_averages = (
+            city_stations
+            .join(read_data.get_table("global_monthly_weather").df, "ghcn_id")
+            .groupby("city_id")
+            .agg(
+                c
+                for m in measurement_columns
+                for c in [
+                    F.avg(m).alias(m),
+                    F.count(m).alias(f'{m}_count'),
+                    F.std(m).alias(f'{m}_std'),
+                    F.stddev(m).alias(f'{m}_stddev')
+                ]
+            )
+        )
+
+        return DataSet([
+            DataTable("noaa", "global_monthly_weather_city", city_averages, "overwrite")
+        ])
+
+
+class GlobalMonthlyWeatherStationTrends(SparkTask):
+    TREND_N_YEARS = [5, 10]
+
+    MEASUREMENT_TRENDS = [
+        "average_daily_temperature", "average_daily_min_temperature", "average_daily_max_temperature",
+        "average_relative_humidity", "average_min_relative_humidity", "average_max_relative_humidity",
+        "total_evaporation", "total_precipitation", "total_snowfall",
+        "days_with_snowfall", "days_with_thunderstorm"
+    ]
+
+
+    def __init__(self):
+        super().__init__("monthly-weather-station-trends")
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
@@ -317,7 +377,8 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
             )
 
             frontend = frontend.unionByName(frontend_years, allowMissingColumns=True)
-        #
+
+        # TODO Remove once array format is confirmed to work
         # frontend = (
         #     base_data
         #     .agg(F.collect_list(F.struct(*collect_columns)).alias('data'))
