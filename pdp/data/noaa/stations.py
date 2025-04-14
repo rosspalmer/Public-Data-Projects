@@ -49,7 +49,7 @@ class SurfaceWeatherStations(SparkTask):
             "S": "us_snowpack",
             "W": "wban"
         }
-        network_name_udf = F.udf(lambda x: network_code_map[x], StringType())
+        network_name_udf = F.udf(lambda x: network_code_map.get(x), StringType())
 
         raw = (
             read_data.get_table("raw_global_stations").df
