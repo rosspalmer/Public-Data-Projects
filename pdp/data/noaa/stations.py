@@ -159,12 +159,12 @@ class StationClusters(SparkTask):
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
-        stations = (
+        stations: pd.DataFrame = (
             read_data.get_table("global_stations").df
             .select("ghcn_id", "lat", "long")
             .toPandas()
         )
-        coords = stations.as_matrix(columns=['lat', 'long'])
+        coords = stations[['lat', 'long']].values()
 
         max_cluster_size_km = 30
         kms_per_radian = 6371.0088
