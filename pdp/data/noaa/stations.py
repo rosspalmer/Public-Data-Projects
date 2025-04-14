@@ -211,8 +211,8 @@ class StationClusters(SparkTask):
             .groupby("cluster_id")
             .agg(
                 F.count("cluster_id").alias("station_count"),
-                F.avg("lat").alias("avg_lat"),
-                F.avg("long").alias("avg_long")
+                F.avg(F.col("stations").getField("lat")).alias("avg_lat"),
+                F.avg(F.col("stations").getField("long")).alias("avg_long")
             )
         ).persist()
 
