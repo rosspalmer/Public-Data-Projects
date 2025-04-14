@@ -199,8 +199,8 @@ class GlobalMonthlyWeatherCity(SparkTask):
                     F.stddev(m).alias(f'{m}_stddev')
                 ]
             ])
-            .withColumn("year", F.left("month_id", 4).cast("int"))
-            .withColumn("month", F.right("month_id", 2).cast("int"))
+            .withColumn("year", F.left("month_id", F.lit(4)).cast("int"))
+            .withColumn("month", F.right("month_id", F.lit(2)).cast("int"))
         )
 
         return DataSet([
