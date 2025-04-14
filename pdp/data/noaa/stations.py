@@ -59,7 +59,8 @@ class SurfaceWeatherStations(SparkTask):
             .withColumn("wban_id", F.when(F.col("network_type_id") == "W", F.right("ghcn_id", F.lit(5))))
         )
 
-        stations = [(r.ghcn_id, (r.lat, r.long)) for r in raw.collect()]
+        stations = [(r.ghcn_id, (r.lat, r.long))
+                    for r in raw.select("ghcn_id", "lat", "long").collect()]
         ids = [x[0] for x in stations]
         coords = [x[1] for x in stations]
 
@@ -159,12 +160,15 @@ class StationClusters(SparkTask):
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
-        stations: pd.DataFrame = (
-            read_data.get_table("global_stations").df
+        stations = read_data.get_table("global_stations").df.persist()
+
+        station_coords: pd.DataFrame = (
+            stations
             .select("ghcn_id", "lat", "long")
             .toPandas()
+            [['lat', 'long']]
+            .to_numpy()
         )
-        coords = stations[['lat', 'long']].to_numpy()
 
         max_cluster_size_km = 30
         kms_per_radian = 6371.0088
@@ -179,14 +183,56 @@ class StationClusters(SparkTask):
             metric='haversine'
         )
 
-        cluster_assignments = db.fit_predict(np.radians(coords))
+        cluster_assignments = db.fit_predict(np.radians(station_coords))
 
         cluster_labels = db.labels_
         num_clusters = len(set(cluster_labels))
-        clusters = pd.Series([coords[cluster_labels == n] for n in range(num_clusters)])
         print('Number of clusters: {}'.format(num_clusters))
 
-        print(cluster_assignments)
+        station_coords['cluster_id'] = cluster_assignments
+
+        station_clusters = (
+            spark.createDataFrame(station_coords[['cluster_id', 'ghcn_id']])
+            .join(stations, "ghcn_id")
+            .withColumn("station_data", F.struct(
+                F.col("ghcn_id"),
+                F.col("network_type_id"),
+                F.col("lat"),
+                F.col("long")
+            ))
+            .groupby("cluster_id")
+            .agg(
+                F.collect_list("station_data").alias("stations")
+            )
+        ).persist()
+
+        cluster_stats = (
+            station_clusters
+            .select("cluster_id", F.explode("stations").alias("stations"))
+            .groupby("cluster_id")
+            .agg(
+                F.count("cluster_id").alias("station_count"),
+                F.avg("lat").alias("avg_lat"),
+                F.avg("long").alias("avg_long")
+            )
+        ).persist()
+
+        centers = [(r.ghcn_id, (r.avg_lat, r.avg_long))
+                    for r in cluster_stats.select("cluster_id", "avg_lat", "avg_long").collect()]
+        ids = [x[0] for x in centers]
+        coords = [x[1] for x in centers]
+
+        lookups = zip(ids, reverse_geocode.search(coords))
+        lookup_df = spark.createDataFrame(
+            data=lookups,
+            schema="cluster_id string, data map<string, string>"
+        ).persist()
+
+        station_clusters = (
+            station_clusters
+            .join(cluster_stats, "cluster_id", "left")
+            .join(lookup_df, "cluster_id", "left")
+        )
 
         # def get_centermost_point(cluster):
         #     centroid = (MultiPoint(cluster).centroid.x, MultiPoint(cluster).centroid.y)
@@ -194,4 +240,6 @@ class StationClusters(SparkTask):
         #     return tuple(centermost_point)
 
 
-        return None
+        return DataSet([
+            DataTable("noaa", "station_clusters", station_clusters, "overwrite"),
+        ])
