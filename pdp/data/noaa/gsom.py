@@ -193,16 +193,13 @@ class GlobalMonthlyWeatherCity(SparkTask):
             city_stations
             .join(read_data.get_table("global_monthly_weather").df, "ghcn_id")
             .groupby("city_id")
-            .agg(
-                c
-                for m in measurement_columns
-                for c in [
+            .agg(*[c for m in measurement_columns for c in [
                     F.avg(m).alias(m),
                     F.count(m).alias(f'{m}_count'),
                     F.std(m).alias(f'{m}_std'),
                     F.stddev(m).alias(f'{m}_stddev')
                 ]
-            )
+            ])
         )
 
         return DataSet([
