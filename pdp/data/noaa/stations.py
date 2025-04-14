@@ -177,12 +177,21 @@ class StationClusters(SparkTask):
             min_samples=min_samples,
             algorithm='ball_tree',
             metric='haversine'
-        )\
-        .fit(np.radians(coords))
+        )
+
+        cluster_assignments = db.fit_predict(np.radians(coords))
 
         cluster_labels = db.labels_
         num_clusters = len(set(cluster_labels))
         clusters = pd.Series([coords[cluster_labels == n] for n in range(num_clusters)])
         print('Number of clusters: {}'.format(num_clusters))
+
+        print(cluster_assignments)
+
+        # def get_centermost_point(cluster):
+        #     centroid = (MultiPoint(cluster).centroid.x, MultiPoint(cluster).centroid.y)
+        #     centermost_point = min(cluster, key=lambda point: great_circle(point, centroid).m)
+        #     return tuple(centermost_point)
+
 
         return None
