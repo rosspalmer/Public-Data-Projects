@@ -218,26 +218,34 @@ class GlobalMonthlyWeatherStationTrends(SparkTask):
         "total_evaporation", "total_precipitation", "total_snowfall",
         "days_with_snowfall", "days_with_thunderstorm"
     ]
+    SUPPORTED_TABLES = {
+        "global_monthly_weather": {"mode": "station", "key": "ghcn_id"},
+        "global_monthly_weather_city": {"mode": "city", "key": "city_id"}
+    }
 
-
-    def __init__(self):
-        super().__init__("monthly-weather-station-trends")
+    def __init__(self, read_table: str):
+        if read_table not in self.SUPPORTED_TABLES:
+            raise Exception(f"Table {read_table} is not supported")
+        self.read_table = read_table
+        self.mode = self.SUPPORTED_TABLES[read_table]["mode"]
+        self.key = self.SUPPORTED_TABLES[read_table]["key"]
+        super().__init__(f"monthly-weather-{self.mode}-trends")
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
-            DataTable("noaa", "global_monthly_weather"),
+            DataTable("noaa", self.read_table),
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
         measurements = (
             read_data
-            .get_table("global_monthly_weather")
+            .get_table(self.read_table)
             .df
             .withColumn("has_data", F.lit(True))
         )
 
-        station_range: DataFrame = measurements.select("ghcn_id").distinct()
+        station_range: DataFrame = measurements.select(self.key).distinct()
         years_range: DataFrame = spark.createDataFrame(data=[Row(year=y) for y in range(1850, 2025)])
         months_range: DataFrame = spark.createDataFrame(data=[Row(month=m) for m in range(1, 13)])
         full_data_range: DataFrame = station_range.crossJoin(years_range).crossJoin(months_range)
@@ -248,11 +256,10 @@ class GlobalMonthlyWeatherStationTrends(SparkTask):
 
         # Start `global_monthly_weather_trends` table by calculating rolling
         # averages of n past years for each station and month
-        past_n_averages =  [3, 5, 10, 20]
-        grouping_window = Window().partitionBy("ghcn_id", "month").orderBy("year")
-        trend_windows = {n: grouping_window.rowsBetween(-(n-1), 0) for n in past_n_averages}
+        grouping_window = Window().partitionBy(self.key, "month").orderBy("year")
+        trend_windows = {n: grouping_window.rowsBetween(-(n-1), 0) for n in self.TREND_N_YEARS}
 
-        trend_columns = ([F.col("ghcn_id"), F.col("month_id"), F.col("date_month_start"),
+        trend_columns = ([F.col(self.key), F.col("month_id"), F.col("date_month_start"),
                          F.col("year"), F.col("month")] +
         [
             F.when(F.count(c).over(w) == F.lit(n), F.avg(c).over(w).cast("decimal(16,3)")).alias(f"{c}_avg{n}")
@@ -262,14 +269,14 @@ class GlobalMonthlyWeatherStationTrends(SparkTask):
 
         trends = (
             full_data_range
-            .join(measurements, ["ghcn_id", "year", "month"], "left")
+            .join(measurements, [self.key, "year", "month"], "left")
             .select(trend_columns)
         )
 
         # TODO add linear regressions to trends
 
         return DataSet([
-            DataTable("noaa", "global_monthly_weather_rolling", trends, "overwrite")
+            DataTable("noaa", f"{self.read_table}_trends", trends, "overwrite")
         ])
 
 
@@ -324,18 +331,7 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
         stations = stations.filter("temperature_count_avg10 >= 1000").select("ghcn_id")
 
         rolling_n = [5, 10]
-        measurement_columns = [
-            "average_daily_temperature",
-            "average_daily_min_temperature",
-            "average_daily_max_temperature",
-            "average_wet_bulb_temperature",
-            "average_wind_speed",
-            "total_precipitation",
-            "total_snowfall",
-            "days_with_fog",
-            "days_with_heavy_fog",
-            "days_with_thunderstorm"
-        ]
+        measurement_columns = list(m)
 
         base_data = (
             trends
