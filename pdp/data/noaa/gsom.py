@@ -188,13 +188,10 @@ class GlobalMonthlyWeatherCity(SparkTask):
             )
         )
 
-        # grouping_window = Window().partitionBy("ghcn_id", "month").orderBy("year")
-        # trend_windows = {n: grouping_window.rowsBetween(-(n-1), 0) for n in self.TREND_N_YEARS}
-
         city_averages = (
             city_stations
             .join(read_data.get_table("global_monthly_weather").df, "ghcn_id")
-            .groupby("city_id")
+            .groupby("city_id", "month_id")
             .agg(*[c for m in measurement_columns for c in [
                     F.avg(m).alias(m),
                     F.count(m).alias(f'{m}_count'),
@@ -202,6 +199,8 @@ class GlobalMonthlyWeatherCity(SparkTask):
                     F.stddev(m).alias(f'{m}_stddev')
                 ]
             ])
+            .withColumn("year", F.left("month_id", 4).cast("int"))
+            .withColumn("month", F.right("month_id", 2).cast("int"))
         )
 
         return DataSet([
@@ -209,7 +208,7 @@ class GlobalMonthlyWeatherCity(SparkTask):
         ])
 
 
-class GlobalMonthlyWeatherStationTrends(SparkTask):
+class GlobalMonthlyWeatherTrends(SparkTask):
     TREND_N_YEARS = [5, 10]
 
     MEASUREMENT_TRENDS = [
@@ -239,9 +238,7 @@ class GlobalMonthlyWeatherStationTrends(SparkTask):
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
         measurements = (
-            read_data
-            .get_table(self.read_table)
-            .df
+            read_data.get_table(self.read_table).df
             .withColumn("has_data", F.lit(True))
         )
 
@@ -318,20 +315,15 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
             DataTable("noaa", "global_stations_trend_counts"),
-            DataTable("noaa", "global_monthly_weather"),
-            DataTable("noaa", "global_monthly_weather_rolling")
+            DataTable("noaa", "global_monthly_weather_city"),
+            DataTable("noaa", "global_monthly_weather_city_trends")
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
         stations = read_data.get_table("global_stations_trend_counts").df
-        measurements = read_data.get_table("global_monthly_weather").df
-        trends = read_data.get_table("global_monthly_weather_rolling").df
-
-        stations = stations.filter("temperature_count_avg10 >= 1000").select("ghcn_id")
-
-        rolling_n = [5, 10]
-        measurement_columns = list(m)
+        measurements = read_data.get_table("global_monthly_weather_city").df
+        trends = read_data.get_table("global_monthly_weather_city_trends").df
 
         base_data = (
             trends
@@ -341,11 +333,11 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
         )
 
         frontend = spark.createDataFrame(data=[], schema=StructType([]))
-        for years in rolling_n:
+        for years in GlobalMonthlyWeatherTrends.TREND_N_YEARS:
 
             collect_columns = ['year'] + [
                 f'{c}{suffix}'
-                for c in measurement_columns
+                for c in GlobalMonthlyWeatherTrends.MEASUREMENT_TRENDS
                 for suffix in ['', f'_avg{years}']
             ]
 
@@ -354,7 +346,7 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
                 .agg(F.collect_list(F.struct(*collect_columns)).alias('data'))
                 .withColumn("data", F.sort_array("data"))
                 .select(
-                    F.col("ghcn_id"),
+                    F.col("city_id"),
                     F.col("month"),
                     F.lit(years).alias("rolling_n"),
                     F.create_map(*[
