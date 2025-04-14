@@ -168,11 +168,11 @@ class StationClusters(SparkTask):
             .toPandas()
         )
 
-        max_cluster_size_km = 30
+        max_cluster_size_km = 10
         kms_per_radian = 6371.0088
         epsilon = max_cluster_size_km / kms_per_radian
 
-        min_samples = 3
+        min_samples = 1
 
         db = DBSCAN(
             eps=epsilon,
