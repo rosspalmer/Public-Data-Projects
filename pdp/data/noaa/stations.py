@@ -76,7 +76,7 @@ class SurfaceWeatherStations(SparkTask):
                 ).alias("data_key"))
             .distinct()
             .collect()
-        )]
+        ) if r not in ['country_code']]
 
         for k in data_keys:
             lookup_df = lookup_df.withColumn(k, F.element_at("data", k))
