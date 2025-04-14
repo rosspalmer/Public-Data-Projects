@@ -166,8 +166,6 @@ class StationClusters(SparkTask):
             stations
             .select("ghcn_id", "lat", "long")
             .toPandas()
-            [['lat', 'long']]
-            .to_numpy()
         )
 
         max_cluster_size_km = 30
@@ -183,7 +181,8 @@ class StationClusters(SparkTask):
             metric='haversine'
         )
 
-        cluster_assignments = db.fit_predict(np.radians(station_coords))
+        numpy_coords = station_coords[['lat','long']].to_numpy()
+        cluster_assignments = db.fit_predict(np.radians(numpy_coords))
 
         cluster_labels = db.labels_
         num_clusters = len(set(cluster_labels))
