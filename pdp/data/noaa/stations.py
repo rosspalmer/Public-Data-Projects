@@ -17,6 +17,17 @@ from pdp.data.job import SparkTask
 
 
 class SurfaceWeatherStations(SparkTask):
+    NETWORK_ID_NAMES = {
+        "0": "unspecified",
+        "1": "community_rain_hail_snow",
+        "C": "us_cooperative_network",
+        "E": "euro_climate_assessment",
+        "M": "world_meteorological_org",
+        "N": "national_meteo_hydro_center",
+        "R": "raw",
+        "S": "us_snowpack",
+        "W": "wban"
+    }
 
     def __init__(self, ncei_data_folder: str):
         super().__init__("surface-stations")
@@ -43,18 +54,7 @@ class SurfaceWeatherStations(SparkTask):
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
-        network_code_map = {
-            "0": "unspecified",
-            "1": "community_rain_hail_snow",
-            "C": "us_cooperative_network",
-            "E": "euro_climate_assessment",
-            "M": "world_meteorological_org",
-            "N": "national_meteo_hydro_center",
-            "R": "raw",
-            "S": "us_snowpack",
-            "W": "wban"
-        }
-        network_name_udf = F.udf(lambda x: network_code_map.get(x), StringType())
+        network_name_udf = F.udf(lambda x: self.NETWORK_ID_NAMES.get(x), StringType())
 
         raw = (
             read_data.get_table("raw_global_stations").df
@@ -123,7 +123,7 @@ class StationClusters(SparkTask):
 
         stations = read_data.get_table("global_stations").df.persist()
 
-        network_types = ["W", "C", "E", "M", "N", "0", "1"]
+        network_types = [n for n in SurfaceWeatherStations.NETWORK_ID_NAMES.keys()]
 
         cluster_assignments = None
         for n in network_types:
