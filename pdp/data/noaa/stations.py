@@ -8,8 +8,6 @@ import pyspark.sql.functions as F
 
 import reverse_geocode
 
-from run import station_clusters
-
 
 class SurfaceWeatherStations(SparkTask):
 
