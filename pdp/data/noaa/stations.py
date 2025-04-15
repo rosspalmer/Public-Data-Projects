@@ -1,5 +1,9 @@
 
 import pandas as pd
+import numpy as np
+from sklearn.cluster import DBSCAN
+from geopy.distance import great_circle
+from shapely.geometry import MultiPoint
 
 from pyspark.sql import DataFrame, SparkSession
 import pyspark.sql.functions as F
@@ -104,14 +108,6 @@ class SurfaceWeatherStations(SparkTask):
             read_data.get_table("raw_global_stations")
         ])
 
-
-import pandas as pd
-import numpy as np
-from sklearn.cluster import DBSCAN
-from geopy.distance import great_circle
-from shapely.geometry import MultiPoint
-
-
 class StationClusters(SparkTask):
 
     def __init__(self):
@@ -147,6 +143,12 @@ class StationClusters(SparkTask):
 
         centers_test = (
             cluster_assignments
+            .withColumn("stations", F.explode("stations"))
+            .select(
+                F.col("cluster_id"), F.col("network_id"),
+                F.col("stations").getField("lat").alias("lat"),
+                F.col("stations").getField("long").alias("long"),
+            )
             .groupby("cluster_id", "network_id")
             .applyInPandas(calculate_cluster_center, "center_lat float, center_long float")
         )
@@ -168,9 +170,6 @@ class StationClusters(SparkTask):
                     for r in cluster_stats.select("cluster_id", "network_id", "avg_lat", "avg_long").collect()]
         ids = [(x[0], x[1]) for x in centers]
         coords = [x[2] for x in centers]
-
-        clusters = pd.Series([coords[cluster_labels == n] for n in range(num_clusters)])
-        print('Number of clusters: {}'.format(num_clusters))
 
         lookups = reverse_geocode.search(coords)
         lookup_df = spark.createDataFrame(
