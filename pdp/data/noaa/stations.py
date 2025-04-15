@@ -186,7 +186,7 @@ class StationClusters(SparkTask):
         ).persist()
 
         centers = [(r.cluster_id, r.network_id, (r.avg_lat, r.avg_long))
-                    for r in cluster_stats.select("cluster_id", "avg_lat", "avg_long").collect()]
+                    for r in cluster_stats.select("cluster_id", "network_id", "avg_lat", "avg_long").collect()]
         ids = [(x[0], x[1]) for x in centers]
         coords = [x[2] for x in centers]
 
