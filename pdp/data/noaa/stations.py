@@ -53,6 +53,7 @@ class SurfaceWeatherStations(SparkTask):
 
         raw = (
             read_data.get_table("raw_global_stations").df
+            .withColumn("name", F.trim("name"))
             .withColumn("country_code", F.left("ghcn_id", F.lit(2)))
             .withColumn("network_id", F.substring("ghcn_id", 3, 1))
             .withColumn("network_name", network_name_udf(F.col("network_id")))
@@ -176,7 +177,7 @@ class StationClusters(SparkTask):
         cluster_stats = (
             cluster_assignments
             .select("cluster_id", F.explode("stations").alias("stations"))
-            .groupby("cluster_id")
+            .groupby("cluster_id", "network_id")
             .agg(
                 F.count("cluster_id").alias("station_count"),
                 F.avg(F.col("stations").getField("lat")).alias("avg_lat"),
@@ -184,21 +185,21 @@ class StationClusters(SparkTask):
             )
         ).persist()
 
-        centers = [(r.cluster_id, (r.avg_lat, r.avg_long))
+        centers = [(r.cluster_id, r.network_id, (r.avg_lat, r.avg_long))
                     for r in cluster_stats.select("cluster_id", "avg_lat", "avg_long").collect()]
-        ids = [x[0] for x in centers]
-        coords = [x[1] for x in centers]
+        ids = [(x[0], x[1]) for x in centers]
+        coords = [x[2] for x in centers]
 
-        lookups = zip(ids, reverse_geocode.search(coords))
+        lookups = reverse_geocode.search(coords)
         lookup_df = spark.createDataFrame(
-            data=lookups,
-            schema="cluster_id string, data map<string, string>"
+            data=[(ids[i][0], ids[i][1], lookups[i]) for i in range(len(ids))],
+            schema="cluster_id string, network_id string, data map<string, string>"
         ).persist()
 
         station_clusters = (
             cluster_assignments
-            .join(cluster_stats, "cluster_id", "left")
-            .join(lookup_df, "cluster_id", "left")
+            .join(cluster_stats, ["cluster_id", "network_id"], "left")
+            .join(lookup_df, ["cluster_id", "network_id"], "left")
         )
 
         # def get_centermost_point(cluster):
