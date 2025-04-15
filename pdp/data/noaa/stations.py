@@ -147,7 +147,7 @@ class StationClusters(SparkTask):
             })
             return df
 
-        centers_test = (
+        cluster_centers = (
             cluster_assignments
             .withColumn("stations", F.explode("stations"))
             .select(
@@ -160,23 +160,10 @@ class StationClusters(SparkTask):
                 calculate_cluster_center,
                 "cluster_id long, network_id string, center_lat float, center_long float"
             )
-        )
-
-        centers_test.show(40)
-
-        cluster_stats = (
-            cluster_assignments
-            .select("cluster_id", "network_id", F.explode("stations").alias("stations"))
-            .groupby("cluster_id", "network_id")
-            .agg(
-                F.count("cluster_id").alias("station_count"),
-                F.avg(F.col("stations").getField("lat")).alias("avg_lat"),
-                F.avg(F.col("stations").getField("long")).alias("avg_long")
-            )
         ).persist()
 
-        centers = [(r.cluster_id, r.network_id, (r.avg_lat, r.avg_long))
-                    for r in cluster_stats.select("cluster_id", "network_id", "avg_lat", "avg_long").collect()]
+        centers = [(r.cluster_id, r.network_id, (r.center_lat, r.center_long))
+                    for r in cluster_centers.collect()]
         ids = [(x[0], x[1]) for x in centers]
         coords = [x[2] for x in centers]
 
@@ -188,15 +175,10 @@ class StationClusters(SparkTask):
 
         station_clusters = (
             cluster_assignments
-            .join(cluster_stats, ["cluster_id", "network_id"], "left")
+            .withColumn("stations_count", F.size("stations"))
+            .join(cluster_centers, ["cluster_id", "network_id"], "left")
             .join(lookup_df, ["cluster_id", "network_id"], "left")
         )
-
-        # def get_centermost_point(cluster):
-        #     centroid = (MultiPoint(cluster).centroid.x, MultiPoint(cluster).centroid.y)
-        #     centermost_point = min(cluster, key=lambda point: great_circle(point, centroid).m)
-        #     return tuple(centermost_point)
-
 
         return DataSet([
             DataTable("noaa", "station_clusters", station_clusters, "overwrite"),
