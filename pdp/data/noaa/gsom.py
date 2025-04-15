@@ -221,8 +221,8 @@ class GlobalMonthlyWeatherTrends(SparkTask):
         "days_with_snowfall", "days_with_thunderstorm"
     ]
     SUPPORTED_TABLES = {
-        "global_monthly_weather": {"mode": "station", "key": "ghcn_id"},
-        "global_monthly_weather_cluster": {"mode": "cluster", "key": "cluster_id"}
+        "global_monthly_weather": {"mode": "station", "keys": ["ghcn_id"]},
+        "global_monthly_weather_cluster": {"mode": "cluster", "keys": ["cluster_id", "network_id"]}
     }
 
     def __init__(self, read_table: str):
@@ -230,7 +230,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
             raise Exception(f"Table {read_table} is not supported")
         self.read_table = read_table
         self.mode = self.SUPPORTED_TABLES[read_table]["mode"]
-        self.key = self.SUPPORTED_TABLES[read_table]["key"]
+        self.keys = self.SUPPORTED_TABLES[read_table]["keys"]
         super().__init__(f"monthly-weather-{self.mode}-trends")
 
     def read(self, spark: SparkSession) -> DataSet:
@@ -245,7 +245,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
             .withColumn("has_data", F.lit(True))
         )
 
-        station_range: DataFrame = measurements.select(self.key).distinct()
+        station_range: DataFrame = measurements.select(self.keys).distinct()
         years_range: DataFrame = spark.createDataFrame(data=[Row(year=y) for y in range(1850, 2025)])
         months_range: DataFrame = spark.createDataFrame(data=[Row(month=m) for m in range(1, 13)])
         full_data_range: DataFrame = station_range.crossJoin(years_range).crossJoin(months_range)
@@ -256,19 +256,23 @@ class GlobalMonthlyWeatherTrends(SparkTask):
 
         # Start `global_monthly_weather_trends` table by calculating rolling
         # averages of n past years for each station and month
-        grouping_window = Window().partitionBy(self.key, "month").orderBy("year")
+        partition_by = self.keys + ["month"]
+        grouping_window = Window().partitionBy(partition_by).orderBy("year")
         trend_windows = {n: grouping_window.rowsBetween(-(n-1), 0) for n in self.TREND_N_YEARS}
 
-        trend_columns = ([F.col(self.key), F.col("month_id"), F.col("year"), F.col("month")] +
-        [
-            F.when(F.count(c).over(w) == F.lit(n), F.avg(c).over(w).cast("decimal(16,3)")).alias(f"{c}_avg{n}")
-            for c in measurement_column_names
-            for n, w in trend_windows.items()
-        ])
+        trend_columns = (
+            [F.col(c) for c in self.keys] +
+            [F.col("month_id"), F.col("year"), F.col("month")] +
+            [
+                F.when(F.count(c).over(w) == F.lit(n), F.avg(c).over(w).cast("decimal(16,3)")).alias(f"{c}_avg{n}")
+                for c in measurement_column_names
+                for n, w in trend_windows.items()
+            ]
+        )
 
         trends = (
             full_data_range
-            .join(measurements, [self.key, "year", "month"], "left")
+            .join(measurements, ["year", "month"], "left")
             .select(trend_columns)
         )
 
@@ -316,7 +320,6 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
-            DataTable("noaa", "global_stations_trend_counts"),
             DataTable("noaa", "global_monthly_weather_cluster"),
             DataTable("noaa", "global_monthly_weather_cluster_trends")
         ])
