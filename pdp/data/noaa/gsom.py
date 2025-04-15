@@ -259,8 +259,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
         grouping_window = Window().partitionBy(self.key, "month").orderBy("year")
         trend_windows = {n: grouping_window.rowsBetween(-(n-1), 0) for n in self.TREND_N_YEARS}
 
-        trend_columns = ([F.col(self.key), F.col("month_id"), F.col("date_month_start"),
-                         F.col("year"), F.col("month")] +
+        trend_columns = ([F.col(self.key), F.col("month_id"), F.col("year"), F.col("month")] +
         [
             F.when(F.count(c).over(w) == F.lit(n), F.avg(c).over(w).cast("decimal(16,3)")).alias(f"{c}_avg{n}")
             for c in measurement_column_names
