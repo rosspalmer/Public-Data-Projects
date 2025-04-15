@@ -159,14 +159,14 @@ class GlobalMonthlyWeather(SparkTask):
         return transformed
 
 
-class GlobalMonthlyWeatherCity(SparkTask):
+class GlobalMonthlyWeatherClusters(SparkTask):
 
     def __init__(self):
-        super().__init__("monthly-weather-city")
+        super().__init__("monthly-weather-clusters")
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
-            DataTable("noaa", "city_stations"),
+            DataTable("noaa", "station_clusters"),
             DataTable("noaa", "global_monthly_weather"),
         ])
 
@@ -180,18 +180,19 @@ class GlobalMonthlyWeatherCity(SparkTask):
         for c in remove_columns:
             measurement_columns.remove(c)
 
-        city_stations = (
-            read_data.get_table("city_stations").df
+        station_clusters = (
+            read_data.get_table("station_clusters").df
             .select(
-                "city_id",
+                "cluster_id",
+                "network_id",
                 F.explode("station_ids").alias("ghcn_id")
             )
         )
 
-        city_averages = (
-            city_stations
+        cluster_averages = (
+            station_clusters
             .join(read_data.get_table("global_monthly_weather").df, "ghcn_id")
-            .groupby("city_id", "month_id")
+            .groupby("cluster_id", "network_id", "month_id")
             .agg(*[c for m in measurement_columns for c in [
                     F.avg(m).alias(m),
                     F.count(m).alias(f'{m}_count'),
@@ -204,7 +205,7 @@ class GlobalMonthlyWeatherCity(SparkTask):
         )
 
         return DataSet([
-            DataTable("noaa", "global_monthly_weather_city", city_averages, "overwrite")
+            DataTable("noaa", "global_monthly_weather_cluster", cluster_averages, "overwrite")
         ])
 
 

@@ -1,5 +1,5 @@
 from pdp.data.job import SparkJob
-from pdp.data.noaa.gsom import GlobalMonthlyWeatherCity
+from pdp.data.noaa.gsom import GlobalMonthlyWeatherClusters
 from pdp.data.noaa.stations import SurfaceWeatherStations, StationClusters
 
 
@@ -8,7 +8,7 @@ with SparkJob("big-homes") as job:
     stations = SurfaceWeatherStations("/mnt/lake-fs/raw/gov/noaa/ncei")
     station_clusters = StationClusters()
     # monthly_weather = GlobalMonthlyWeather()
-    monthly_weather_city = GlobalMonthlyWeatherCity()
+    monthly_weather_cluster = GlobalMonthlyWeatherClusters()
     # monthly_weather_trends = GlobalMonthlyWeatherTrends()
     # stations_qualified = TrendStationsQualified()
     # frontend = GlobalMonthlyWeatherTrendsFrontend()
