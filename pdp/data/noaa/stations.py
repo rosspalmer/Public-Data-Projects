@@ -221,7 +221,7 @@ class StationClusters(SparkTask):
             .toPandas()
         )
 
-        max_cluster_size_km = 10
+        max_cluster_size_km = 20
         kms_per_radian = 6371.0088
         epsilon = max_cluster_size_km / kms_per_radian
 
