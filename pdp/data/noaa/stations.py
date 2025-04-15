@@ -134,10 +134,10 @@ class StationClusters(SparkTask):
         cluster_assignments = cluster_assignments.persist()
 
         def calculate_cluster_center(cluster: pd.DataFrame) -> pd.DataFrame:
-            coords = zip(cluster["lat"].tolist(), cluster["long"].tolist())
-            mp = MultiPoint(coords)
+            coord_list = list(zip(cluster["lat"].tolist(), cluster["long"].tolist()))
+            mp = MultiPoint(coord_list)
             centroid = (mp.centroid.x, mp.centroid.y)
-            centermost_point = min(coords, key=lambda point: great_circle(point, centroid).m)
+            centermost_point = min(coord_list, key=lambda point: great_circle(point, centroid).m)
             df = pd.DataFrame({"center_lat": [centermost_point[0]], "center_long": [centermost_point[1]]})
             return df
 
