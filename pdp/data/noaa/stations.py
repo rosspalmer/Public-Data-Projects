@@ -54,7 +54,7 @@ class SurfaceWeatherStations(SparkTask):
         raw = (
             read_data.get_table("raw_global_stations").df
             .withColumn("country_code", F.left("ghcn_id", F.lit(2)))
-            .withColumn("network_id", F.substring("ghcn_id", 2, 1))
+            .withColumn("network_id", F.substring("ghcn_id", 3, 1))
             .withColumn("network_name", network_name_udf(F.col("network_id")))
             .withColumn("wban_id", F.when(F.col("network_id") == "W", F.right("ghcn_id", F.lit(5))))
         )
