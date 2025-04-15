@@ -1,5 +1,5 @@
-from pyspark.sql import SparkSession
-from pyspark.sql.types import StringType
+from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql.types import StringType, StructType
 
 from pdp.data.data import DataSet, DataTable
 from pdp.data.job import SparkTask
@@ -7,6 +7,8 @@ from pdp.data.job import SparkTask
 import pyspark.sql.functions as F
 
 import reverse_geocode
+
+from run import station_clusters
 
 
 class SurfaceWeatherStations(SparkTask):
@@ -54,9 +56,9 @@ class SurfaceWeatherStations(SparkTask):
         raw = (
             read_data.get_table("raw_global_stations").df
             .withColumn("country_code", F.left("ghcn_id", F.lit(2)))
-            .withColumn("network_type_id", F.substring("ghcn_id", 2, 1))
-            .withColumn("network_name", network_name_udf(F.col("network_type_id")))
-            .withColumn("wban_id", F.when(F.col("network_type_id") == "W", F.right("ghcn_id", F.lit(5))))
+            .withColumn("network_id", F.substring("ghcn_id", 2, 1))
+            .withColumn("network_name", network_name_udf(F.col("network_id")))
+            .withColumn("wban_id", F.when(F.col("network_id") == "W", F.right("ghcn_id", F.lit(5))))
         )
 
         stations = [(r.ghcn_id, (r.lat, r.long))
@@ -162,51 +164,19 @@ class StationClusters(SparkTask):
 
         stations = read_data.get_table("global_stations").df.persist()
 
-        station_coords: pd.DataFrame = (
-            stations
-            .select("ghcn_id", "lat", "long")
-            .toPandas()
-        )
+        network_types = ["W", "E", "M", "N"]
 
-        max_cluster_size_km = 10
-        kms_per_radian = 6371.0088
-        epsilon = max_cluster_size_km / kms_per_radian
-
-        min_samples = 1
-
-        db = DBSCAN(
-            eps=epsilon,
-            min_samples=min_samples,
-            algorithm='ball_tree',
-            metric='haversine'
-        )
-
-        numpy_coords = station_coords[['lat','long']].to_numpy()
-        cluster_assignments = db.fit_predict(np.radians(numpy_coords))
-
-        cluster_labels = db.labels_
-        num_clusters = len(set(cluster_labels))
-        print('Number of clusters: {}'.format(num_clusters))
-
-        station_coords['cluster_id'] = cluster_assignments
-
-        station_clusters = (
-            spark.createDataFrame(station_coords[['cluster_id', 'ghcn_id']])
-            .join(stations, "ghcn_id")
-            .withColumn("station_data", F.struct(
-                F.col("ghcn_id"),
-                F.col("network_type_id"),
-                F.col("lat"),
-                F.col("long")
-            ))
-            .groupby("cluster_id")
-            .agg(
-                F.collect_list("station_data").alias("stations")
-            )
-        ).persist()
+        cluster_assignments = None
+        for n in network_types:
+            network_cluster_assignments = self._cluster_stations(spark, stations, n)
+            if cluster_assignments is not None:
+                cluster_assignments = cluster_assignments.unionByName(network_cluster_assignments)
+            else:
+                cluster_assignments = network_cluster_assignments
+        cluster_assignments = cluster_assignments.persist()
 
         cluster_stats = (
-            station_clusters
+            cluster_assignments
             .select("cluster_id", F.explode("stations").alias("stations"))
             .groupby("cluster_id")
             .agg(
@@ -228,7 +198,7 @@ class StationClusters(SparkTask):
         ).persist()
 
         station_clusters = (
-            station_clusters
+            cluster_assignments
             .join(cluster_stats, "cluster_id", "left")
             .join(lookup_df, "cluster_id", "left")
         )
@@ -242,3 +212,55 @@ class StationClusters(SparkTask):
         return DataSet([
             DataTable("noaa", "station_clusters", station_clusters, "overwrite"),
         ])
+
+    def _cluster_stations(self, spark: SparkSession, stations: DataFrame, network_id: str) -> DataFrame:
+
+        station_coords: pd.DataFrame = (
+            stations
+            .filter(F.col("network_type_id") == network_id)
+            .select("ghcn_id", "lat", "long")
+            .toPandas()
+        )
+
+        max_cluster_size_km = 10
+        kms_per_radian = 6371.0088
+        epsilon = max_cluster_size_km / kms_per_radian
+
+        min_samples = 1
+
+        db = DBSCAN(
+            eps=epsilon,
+            min_samples=min_samples,
+            algorithm='ball_tree',
+            metric='haversine'
+        )
+
+        numpy_coords = station_coords[['lat', 'long']].to_numpy()
+        cluster_assignments = db.fit_predict(np.radians(numpy_coords))
+
+        cluster_labels = db.labels_
+        num_clusters = len(set(cluster_labels))
+
+        print(f'Fit for {network_id} network')
+        print(f'Number of stations: {len(station_coords)}')
+        print(f'Number of clusters: {num_clusters}')
+
+        station_coords['cluster_id'] = cluster_assignments
+
+        station_network_clusters = (
+            spark.createDataFrame(station_coords[['cluster_id', 'ghcn_id']])
+            .join(stations, "ghcn_id")
+            .withColumn("station_data", F.struct(
+                F.col("ghcn_id"),
+                F.col("name"),
+                F.col("lat"),
+                F.col("long")
+            ))
+            .groupby("cluster_id")
+            .agg(
+                F.collect_list("station_data").alias("stations")
+            )
+            .withColumn("network_id", F.lit(network_id))
+        )
+
+        return station_network_clusters
