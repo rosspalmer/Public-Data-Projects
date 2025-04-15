@@ -323,13 +323,11 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
-        stations = read_data.get_table("global_stations_trend_counts").df
-        measurements = read_data.get_table("global_monthly_weather_city").df
-        trends = read_data.get_table("global_monthly_weather_city_trends").df
+        measurements = read_data.get_table("global_monthly_weather_cluster").df
+        trends = read_data.get_table("global_monthly_weather_cluster_trends").df
 
         base_data = (
             trends
-            .join(stations, "cluster_", "inner")
             .join(measurements, ["ghcn_id", "year", "month"], "left")
             .groupBy("ghcn_id", "month")
         )
@@ -348,7 +346,7 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
                 .agg(F.collect_list(F.struct(*collect_columns)).alias('data'))
                 .withColumn("data", F.sort_array("data"))
                 .select(
-                    F.col("city_id"),
+                    F.col("cluster_id", "network_id"),
                     F.col("month"),
                     F.lit(years).alias("rolling_n"),
                     F.create_map(*[
@@ -366,6 +364,11 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
             )
 
             frontend = frontend.unionByName(frontend_years, allowMissingColumns=True)
+
+        return DataSet([
+            DataTable("noaa", "global_monthly_trends_frontend", frontend, "overwrite")
+        ])
+
 
         # TODO Remove once array format is confirmed to work
         # frontend = (
@@ -389,7 +392,3 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
         #     .withColumn("json_2", F.regexp_replace("json_2", '"0":','"x":'))
         #     .withColumn("json_2", F.regexp_replace("json_2", '"1":', '"y":'))
         # )
-
-        return DataSet([
-            DataTable("noaa", "global_monthly_trends_frontend", frontend, "overwrite")
-        ])
