@@ -185,8 +185,10 @@ class GlobalMonthlyWeatherClusters(SparkTask):
             .select(
                 "cluster_id",
                 "network_id",
-                F.explode("stations").getField("ghcn_id").alias("ghcn_id")
+                F.explode("stations").alias("station")
             )
+            .withColumn("ghcn_id", F.explode("stations").alias("station"))
+            .drop("station")
         )
 
         cluster_averages = (
