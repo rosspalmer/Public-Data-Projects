@@ -215,7 +215,7 @@ class StationClusters(SparkTask):
 
         station_coords: pd.DataFrame = (
             stations
-            .filter(F.col("network_type_id") == network_id)
+            .filter(F.col("network_id") == network_id)
             .select("ghcn_id", "lat", "long")
             .toPandas()
         )
