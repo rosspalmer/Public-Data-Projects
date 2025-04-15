@@ -153,7 +153,7 @@ class StationClusters(SparkTask):
             .select(
                 F.col("cluster_id"), F.col("network_id"),
                 F.col("stations").getField("lat").alias("lat"),
-                F.col("stations").getField("long").alias("long"),
+                F.col("stations").getField("long").alias("long")
             )
             .groupby("cluster_id", "network_id")
             .applyInPandas(
@@ -162,22 +162,10 @@ class StationClusters(SparkTask):
             )
         ).persist()
 
-        centers = [(r.cluster_id, r.network_id, (r.center_lat, r.center_long))
-                    for r in cluster_centers.collect()]
-        ids = [(x[0], x[1]) for x in centers]
-        coords = [x[2] for x in centers]
-
-        lookups = reverse_geocode.search(coords)
-        lookup_df = spark.createDataFrame(
-            data=[(ids[i][0], ids[i][1], lookups[i]) for i in range(len(ids))],
-            schema="cluster_id string, network_id string, data map<string, string>"
-        ).persist()
-
         station_clusters = (
             cluster_assignments
             .withColumn("stations_count", F.size("stations"))
             .join(cluster_centers, ["cluster_id", "network_id"], "left")
-            .join(lookup_df, ["cluster_id", "network_id"], "left")
         )
 
         return DataSet([
@@ -224,12 +212,19 @@ class StationClusters(SparkTask):
             .withColumn("station_data", F.struct(
                 F.col("ghcn_id"),
                 F.col("name"),
+                F.col("network_id"),
                 F.col("lat"),
-                F.col("long")
+                F.col("long"),
+                F.col("country"),
+                F.col("city"),
+                F.col("state")
             ))
             .groupby("cluster_id")
             .agg(
-                F.collect_list("station_data").alias("stations")
+                F.collect_list("station_data").alias("stations"),
+                F.collect_set(F.col("station_data").getField("country")).alias("countries"),
+                F.collect_set(F.col("station_data").getField("city")).alias("cities"),
+                F.collect_set(F.col("station_data").getField("state")).alias("states")
             )
             .withColumn("network_id", F.lit(network_id))
         )
