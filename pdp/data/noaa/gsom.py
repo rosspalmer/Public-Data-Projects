@@ -187,7 +187,7 @@ class GlobalMonthlyWeatherClusters(SparkTask):
                 "network_id",
                 F.explode("stations").alias("station")
             )
-            .withColumn("ghcn_id", F.explode("stations").alias("station"))
+            .withColumn("ghcn_id", F.col("station").getField("ghcn_id"))
             .drop("station")
         )
 
