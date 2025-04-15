@@ -283,36 +283,6 @@ class GlobalMonthlyWeatherTrends(SparkTask):
         ])
 
 
-class TrendStationsQualified(SparkTask):
-
-    def __init__(self):
-        super().__init__("trend-stations-qualified")
-
-    def read(self, spark: SparkSession) -> DataSet:
-        return DataSet([
-            DataTable("noaa", "global_monthly_weather_rolling")
-        ])
-
-    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
-
-        trends = read_data.get_table("global_monthly_weather_rolling").df
-
-        qualified = (
-            trends
-            .groupBy("ghcn_id")
-            .agg(
-                F.count("average_daily_temperature_avg10").alias("temperature_count_avg10"),
-                F.count("total_precipitation_avg10").alias("precipitation_count_avg10"),
-            )
-        )
-
-        write = [
-            DataTable("noaa", "global_stations_trend_counts", qualified, "overwrite")
-        ]
-
-        return DataSet(write)
-
-
 class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
 
     def __init__(self):
@@ -349,7 +319,8 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
                 .agg(F.collect_list(F.struct(*collect_columns)).alias('data'))
                 .withColumn("data", F.sort_array("data"))
                 .select(
-                    F.col("cluster_id", "network_id"),
+                    F.col("cluster_id"),
+                    F.col("network_id"),
                     F.col("month"),
                     F.lit(years).alias("rolling_n"),
                     F.create_map(*[
