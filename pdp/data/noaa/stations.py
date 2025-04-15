@@ -156,7 +156,10 @@ class StationClusters(SparkTask):
                 F.col("stations").getField("long").alias("long"),
             )
             .groupby("cluster_id", "network_id")
-            .applyInPandas(calculate_cluster_center, "center_lat float, center_long float")
+            .applyInPandas(
+                calculate_cluster_center,
+                "cluster_id long, network_id string, center_lat float, center_long float"
+            )
         )
 
         centers_test.show(40)
