@@ -185,7 +185,7 @@ class GlobalMonthlyWeatherClusters(SparkTask):
             .select(
                 "cluster_id",
                 "network_id",
-                F.explode("station_ids").alias("ghcn_id")
+                F.explode("stations").getField("ghcn_id").alias("ghcn_id")
             )
         )
 
