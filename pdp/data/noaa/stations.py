@@ -1,12 +1,14 @@
+
+import pandas as pd
+
 from pyspark.sql import DataFrame, SparkSession
+import pyspark.sql.functions as F
 from pyspark.sql.types import StringType, StructType
+import reverse_geocode
+
 
 from pdp.data.data import DataSet, DataTable
 from pdp.data.job import SparkTask
-
-import pyspark.sql.functions as F
-
-import reverse_geocode
 
 
 class SurfaceWeatherStations(SparkTask):
@@ -29,8 +31,6 @@ class SurfaceWeatherStations(SparkTask):
                 "_c6": "gsn", "_c7": "hcn_crn", "_c8": "wmo_id"
             })
         )
-
-        raw.show()
 
         return DataSet([
             DataTable("noaa", "raw_global_stations", raw, "overwrite")
@@ -105,43 +105,6 @@ class SurfaceWeatherStations(SparkTask):
         ])
 
 
-# class CityWeatherStations(SparkTask):
-#
-#     def __init__(self):
-#         super().__init__("city-weather-stations")
-#
-#     def read(self, spark: SparkSession) -> DataSet:
-#
-#         return DataSet([
-#             DataTable("noaa", "global_stations")
-#         ])
-#
-#     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
-#
-#         stations = read_data.get_table("global_stations").df
-#
-#         city_lat_long = (
-#             stations
-#             .groupby("city", "state", "country")
-#             .agg(
-#                 F.element_at(F.collect_list("city_lat"), 1).alias("city_lat"),
-#                 F.element_at(F.collect_list("city_long"), 1).alias("city_long")
-#             )
-#         )
-#
-#         cities = (
-#             stations
-#             .groupby("city", "state", "country")
-#             .agg(
-#                 F.collect_set("ghcn_id").alias("station_ids")
-#             )
-#             .join(city_lat_long, ["city", "state", "country"])
-#             .withColumn("city_id", F.monotonically_increasing_id())
-#         )
-#
-#         return DataSet([DataTable("noaa", "city_stations", cities, "overwrite")])
-
-
 import pandas as pd
 import numpy as np
 from sklearn.cluster import DBSCAN
@@ -174,6 +137,22 @@ class StationClusters(SparkTask):
                 cluster_assignments = network_cluster_assignments
         cluster_assignments = cluster_assignments.persist()
 
+        def calculate_cluster_center(cluster: pd.DataFrame) -> pd.DataFrame:
+            coords = zip(cluster["lat"].tolist(), cluster["long"].tolist())
+            mp = MultiPoint(coords)
+            centroid = (mp.centroid.x, mp.centroid.y)
+            centermost_point = min(coords, key=lambda point: great_circle(point, centroid).m)
+            df = pd.DataFrame({"center_lat": [centermost_point[0]], "center_long": [centermost_point[1]]})
+            return df
+
+        centers_test = (
+            cluster_assignments
+            .groupby("cluster_id", "network_id")
+            .applyInPandas(calculate_cluster_center, "center_lat float, center_long float")
+        )
+
+        centers_test.show(40)
+
         cluster_stats = (
             cluster_assignments
             .select("cluster_id", "network_id", F.explode("stations").alias("stations"))
@@ -189,6 +168,9 @@ class StationClusters(SparkTask):
                     for r in cluster_stats.select("cluster_id", "network_id", "avg_lat", "avg_long").collect()]
         ids = [(x[0], x[1]) for x in centers]
         coords = [x[2] for x in centers]
+
+        clusters = pd.Series([coords[cluster_labels == n] for n in range(num_clusters)])
+        print('Number of clusters: {}'.format(num_clusters))
 
         lookups = reverse_geocode.search(coords)
         lookup_df = spark.createDataFrame(
