@@ -272,7 +272,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
 
         trends = (
             full_data_range
-            .join(measurements, ["year", "month"], "left")
+            .join(measurements, self.keys + ["year", "month"], "left")
             .select(trend_columns)
         )
 
