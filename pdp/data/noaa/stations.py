@@ -163,7 +163,7 @@ class StationClusters(SparkTask):
 
         stations = read_data.get_table("global_stations").df.persist()
 
-        network_types = ["W", "E", "M", "N"]
+        network_types = ["W", "E", "M", "N", "0"]
 
         cluster_assignments = None
         for n in network_types:
@@ -176,7 +176,7 @@ class StationClusters(SparkTask):
 
         cluster_stats = (
             cluster_assignments
-            .select("cluster_id", F.explode("stations").alias("stations"))
+            .select("cluster_id", "network_id", F.explode("stations").alias("stations"))
             .groupby("cluster_id", "network_id")
             .agg(
                 F.count("cluster_id").alias("station_count"),
