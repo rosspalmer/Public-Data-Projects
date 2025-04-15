@@ -1,3 +1,4 @@
+from typing import Any
 
 import pandas as pd
 import numpy as np
@@ -122,7 +123,7 @@ class StationClusters(SparkTask):
 
         stations = read_data.get_table("global_stations").df.persist()
 
-        network_types = ["W", "E", "M", "N", "0"]
+        network_types = ["W", "C", "E", "M", "N", "0", "1"]
 
         cluster_assignments = None
         for n in network_types:
@@ -133,12 +134,17 @@ class StationClusters(SparkTask):
                 cluster_assignments = network_cluster_assignments
         cluster_assignments = cluster_assignments.persist()
 
-        def calculate_cluster_center(cluster: pd.DataFrame) -> pd.DataFrame:
+        def calculate_cluster_center(keys: Any, cluster: pd.DataFrame) -> pd.DataFrame:
             coord_list = list(zip(cluster["lat"].tolist(), cluster["long"].tolist()))
             mp = MultiPoint(coord_list)
             centroid = (mp.centroid.x, mp.centroid.y)
             centermost_point = min(coord_list, key=lambda point: great_circle(point, centroid).m)
-            df = pd.DataFrame({"center_lat": [centermost_point[0]], "center_long": [centermost_point[1]]})
+            df = pd.DataFrame({
+                "cluster_id": keys[0],
+                "network_id": keys[1],
+                "center_lat": [centermost_point[0]],
+                "center_long": [centermost_point[1]]
+            })
             return df
 
         centers_test = (
