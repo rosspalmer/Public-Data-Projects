@@ -302,7 +302,7 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
         base_data = (
             trends
             .join(measurements, ["cluster_id", "network_id", "month", "year"], "left")
-            .groupBy("cluster_id", "month")
+            .groupBy("cluster_id", "network_id", "month")
         )
 
         frontend = spark.createDataFrame(data=[], schema=StructType([]))
