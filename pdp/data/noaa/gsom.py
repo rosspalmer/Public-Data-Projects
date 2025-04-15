@@ -222,7 +222,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
     ]
     SUPPORTED_TABLES = {
         "global_monthly_weather": {"mode": "station", "key": "ghcn_id"},
-        "global_monthly_weather_city": {"mode": "city", "key": "city_id"}
+        "global_monthly_weather_cluster": {"mode": "cluster", "key": "cluster_id"}
     }
 
     def __init__(self, read_table: str):
@@ -318,8 +318,8 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
             DataTable("noaa", "global_stations_trend_counts"),
-            DataTable("noaa", "global_monthly_weather_city"),
-            DataTable("noaa", "global_monthly_weather_city_trends")
+            DataTable("noaa", "global_monthly_weather_cluster"),
+            DataTable("noaa", "global_monthly_weather_cluster_trends")
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
@@ -330,7 +330,7 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
 
         base_data = (
             trends
-            .join(stations, "ghcn_id", "inner")
+            .join(stations, "cluster_", "inner")
             .join(measurements, ["ghcn_id", "year", "month"], "left")
             .groupBy("ghcn_id", "month")
         )
