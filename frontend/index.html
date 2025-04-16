@@ -6,14 +6,13 @@
     <title>Data Dashboard</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="index.js"></script>
-    
+
     <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Chart.js Testing -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <!-- Leaflet.js Testing -->
-
   </head>
   <body>
     <header>
@@ -30,14 +29,34 @@
         <!-- Additional charts can be added here -->
       </div>
 
-      <div id="map-container" style="height: 400px;">
-        <!-- Map Container -->
-        <h1>Enter Zip Code to View Map</h1>
+      <!-- saving for now... will probably need a map container at some point, but working on popup at the moment -->
+      <!-- <div id="map-container" style="height: 400px;"> -->
+      <!-- Map Container -->
+      <!-- <h1>Enter Zip Code to View Map</h1>
         <input type="text" id="zipInput" placeholder="Enter Zip Code">
-        <button id="showMapButton">Show Map</button>
+        <button id="showStationsButton" onclick="getStationData()">Show Stations</button>
         <div id="map"></div>
-      </div>
+      </div> -->
 
+      <div id="station-container" style="height: 400px">
+        <!-- Stations Info Container -->
+        <h3>Enter Zip Code to View Stations Near You</h3>
+        <input type="text" id="zipInput" placeholder="Enter Zip Code" />
+        <button id="showStationsButton" onclick="getStationData()">
+          Show Stations
+        </button>
+
+        <!-- Popup/Modal Wrapper -->
+        <div id="stationsPopup" class="popup-container" style="display: none">
+          <div class="popup-inner">
+            <div class="popup-header">
+              <span>Nearby Weather Stations</span>
+              <button id="closePopupBtn" onclick="closePopup()">&times;</button>
+            </div>
+            <div id="stationCards"></div>
+          </div>
+        </div>
+      </div>
     </main>
   </body>
 </html>

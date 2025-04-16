@@ -25,11 +25,83 @@ header {
 }
 
 #map-container {
-    margin-top: 20px; /* Space above the map section */
+  margin-top: 20px; /* Space above the map section */
 }
 
 #map {
-    width: 100%; /* Full width for responsive design */
-    height: 400px; /* Set a specific height */
-    border: 1px solid #ccc; /* Optional: Add a border to distinguish map area */
+  width: 100%; /* Full width for responsive design */
+  height: 400px; /* Set a specific height */
+  border: 1px solid #ccc; /* Optional: Add a border to distinguish map area */
+}
+
+
+/* Stations Popup */
+.popup-container {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 60px 30px;
+  z-index: 999;
+}
+
+.popup-inner {
+  width: 360px;
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.3em;
+  margin-bottom: 16px;
+  font-weight: bold;
+}
+
+.station-card {
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 12px;
+  transition: box-shadow 0.2s;
+}
+
+.station-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.station-title {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  font-size: 1em;
+}
+
+.station-details {
+  font-size: 0.9em;
+  color: #333;
+  margin-top: 8px;
+}
+
+.station-details p {
+  margin: 4px 0;
+}
+
+#closePopupBtn {
+  background: none;
+  border: none;
+  font-size: 1.2em;
+  cursor: pointer;
 }
