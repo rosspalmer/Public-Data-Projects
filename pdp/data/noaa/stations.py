@@ -161,7 +161,7 @@ class StationClusters(SparkTask):
 
         station_clusters = (
             cluster_assignments
-            .withColumn("stations_count", F.size("stations"))
+            .withColumn("stations_count", F.size("station_ids"))
             .join(cluster_centers, ["cluster_id", "network_id"], "left")
         )
 
