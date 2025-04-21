@@ -140,7 +140,7 @@ class StationClusters(SparkTask):
             centroid = (mp.centroid.x, mp.centroid.y)
             centermost_point = min(coord_list, key=lambda point: great_circle(point, centroid).m)
             df = pd.DataFrame({
-                "cluster_id": keys[0],
+                "cluster_id": f"{keys[1]}-{keys[0]}",
                 "network_id": keys[1],
                 "center_lat": [centermost_point[0]],
                 "center_long": [centermost_point[1]]
@@ -149,13 +149,9 @@ class StationClusters(SparkTask):
 
         cluster_centers = (
             cluster_assignments
-            .withColumn("stations", F.explode("stations"))
-            .select(
-                F.col("cluster_id"), F.col("network_id"),
-                F.col("stations").getField("lat").alias("lat"),
-                F.col("stations").getField("long").alias("long")
-            )
-            .groupby("cluster_id", "network_id")
+            .withColumn("ghcn_id", F.explode("station_ids"))
+            .join(stations, "ghcn_id")
+            .groupby("cluster_id")
             .applyInPandas(
                 calculate_cluster_center,
                 "cluster_id long, network_id string, center_lat float, center_long float"
@@ -204,29 +200,52 @@ class StationClusters(SparkTask):
         print(f'Number of stations: {len(station_coords)}')
         print(f'Number of clusters: {num_clusters}')
 
-        station_coords['cluster_id'] = cluster_assignments
+        station_coords['cluster_id'] = f"{network_id}-" + cluster_assignments
 
         station_network_clusters = (
             spark.createDataFrame(station_coords[['cluster_id', 'ghcn_id']])
             .join(stations, "ghcn_id")
-            .withColumn("station_data", F.struct(
-                F.col("ghcn_id"),
-                F.col("name"),
-                F.col("network_id"),
-                F.col("lat"),
-                F.col("long"),
-                F.col("country"),
-                F.col("city"),
-                F.col("state")
-            ))
             .groupby("cluster_id")
             .agg(
-                F.collect_list("station_data").alias("stations"),
-                F.collect_set(F.col("station_data").getField("country")).alias("countries"),
-                F.collect_set(F.col("station_data").getField("city")).alias("cities"),
-                F.collect_set(F.col("station_data").getField("state")).alias("states")
+                F.collect_set("ghcn_id").alias("station_ids")
             )
             .withColumn("network_id", F.lit(network_id))
         )
 
         return station_network_clusters
+
+
+class StationClustersFrontend(SparkTask):
+
+    def __init__(self):
+        super().__init__("station-clusters-frontend")
+
+    def read(self, spark: SparkSession) -> DataSet:
+        tables = [
+            DataTable("noaa", "global_stations"),
+            DataTable("noaa", "station_clusters")
+        ]
+        return DataSet(tables)
+
+    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
+
+        stations = read_data.get_table("global_stations").df
+        clusters = read_data.get_table("station_clusters").df
+
+        cluster_stations = clusters.select(
+            "cluster_id",
+            F.explode("station_ids").alias("ghcn_id")
+        )
+
+        clusters = clusters.select("cluster_id", "network_id", "center_lat", "center_long")
+
+        write_data = [
+            DataTable("weather", "stations", stations, "overwrite"),
+            DataTable("weather", "clusters", clusters, "overwrite"),
+            DataTable("weather", "cluster_stations", cluster_stations, "overwrite"),
+        ]
+
+        return DataSet(write_data)
+
+    def write(self, write_dataset: DataSet):
+        write_dataset.write_all_jdbc()

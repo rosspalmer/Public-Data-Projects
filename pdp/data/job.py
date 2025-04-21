@@ -34,7 +34,11 @@ class SparkTask(ABC):
         read_dataset.read_empty_tables(spark)
 
         write_dataset: DataSet = self.transform(spark, read_dataset)
+        self.write(write_dataset)
+
+    def write(self, write_dataset: DataSet):
         write_dataset.write_all_tables()
+
 
 class SparkJob:
 
@@ -49,6 +53,7 @@ class SparkJob:
            SparkSession.builder
            .master("spark://10.0.0.2:7077")
            .appName(self.name)
+           .config("spark.jars", "mariadb-java-client-3.5.3.jar")
            .config("spark.sql.warehouse.dir", "file:/mnt/lake-fs/spark-warehouse")
            .config("spark.databricks.delta.schema.autoMerge.enabled", True)
            .enableHiveSupport()

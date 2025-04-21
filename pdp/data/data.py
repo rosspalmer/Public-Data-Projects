@@ -54,6 +54,19 @@ class DataSet:
         for table_name in self.tables.keys():
             self.write_table(table_name)
 
+    def write_jdbc(self, table_name: str):
+        table = self.get_table(table_name)
+        table.df.write \
+        .jdbc(
+            url="jdbc:mysql://10.0.0.85:3306",
+            table=f"{table.schema}.{table.name}",
+            properties={"user": "ross", "password": "FIXME"}
+        )
+
+    def write_all_jdbc(self):
+        for table_name in self.tables.keys():
+            self.write_jdbc(table_name)
+
 
 def merge_datasets(datasets: list[DataSet]) -> DataSet:
     merged_tables = [table for dataset in datasets for table in dataset.tables.values()]
