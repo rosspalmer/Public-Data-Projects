@@ -60,7 +60,7 @@ class DataSet:
         .jdbc(
             url="jdbc:mysql://10.0.0.85:3306",
             table=f"{table.schema}.{table.name}",
-            properties={"user": "ross", "password": "FIXME"}
+            properties={"user": "ross", "password": "p@sswor!"}
         )
 
     def write_all_jdbc(self):
