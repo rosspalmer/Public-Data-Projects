@@ -184,17 +184,14 @@ class GlobalMonthlyWeatherClusters(SparkTask):
             read_data.get_table("station_clusters").df
             .select(
                 "cluster_id",
-                "network_id",
-                F.explode("stations").alias("station")
+                F.explode("station_ids").alias("ghcn_id")
             )
-            .withColumn("ghcn_id", F.col("station").getField("ghcn_id"))
-            .drop("station")
         )
 
         cluster_averages = (
             station_clusters
             .join(read_data.get_table("global_monthly_weather").df, "ghcn_id")
-            .groupby("cluster_id", "network_id", "month_id")
+            .groupby("cluster_id", "month_id")
             .agg(*[c for m in measurement_columns for c in [
                     F.avg(m).alias(m),
                     F.count(m).alias(f'{m}_count'),
@@ -222,7 +219,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
     ]
     SUPPORTED_TABLES = {
         "global_monthly_weather": {"mode": "station", "keys": ["ghcn_id"]},
-        "global_monthly_weather_cluster": {"mode": "cluster", "keys": ["cluster_id", "network_id"]}
+        "global_monthly_weather_cluster": {"mode": "cluster", "keys": ["cluster_id"]}
     }
 
     def __init__(self, read_table: str):
@@ -301,8 +298,8 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
 
         base_data = (
             trends
-            .join(measurements, ["cluster_id", "network_id", "month", "year"], "left")
-            .groupBy("cluster_id", "network_id", "month")
+            .join(measurements, ["cluster_id", "month", "year"], "left")
+            .groupBy("cluster_id", "month")
         )
 
         frontend = spark.createDataFrame(data=[], schema=StructType([]))
@@ -320,7 +317,6 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
                 .withColumn("data", F.sort_array("data"))
                 .select(
                     F.col("cluster_id"),
-                    F.col("network_id"),
                     F.col("month"),
                     F.lit(years).alias("rolling_n"),
                     F.create_map(*[
