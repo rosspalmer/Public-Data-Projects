@@ -200,7 +200,7 @@ class StationClusters(SparkTask):
         print(f'Number of stations: {len(station_coords)}')
         print(f'Number of clusters: {num_clusters}')
 
-        station_coords['cluster_id'] = f"{network_id}-" + cluster_assignments.map(str)
+        station_coords['cluster_id'] = f"{network_id}-" + pd.Series(cluster_assignments).map(str)
 
         station_network_clusters = (
             spark.createDataFrame(station_coords[['cluster_id', 'ghcn_id']])
