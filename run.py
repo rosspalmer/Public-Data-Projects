@@ -9,6 +9,6 @@ with SparkJob("big-homes") as job:
     # station_clusters = StationClusters()
     # station_jdbc = StationClustersFrontend()
     # monthly_weather = GlobalMonthlyWeather()
-    monthly_weather_cluster = GlobalMonthlyWeatherClusters()
-    monthly_weather_trends = GlobalMonthlyWeatherTrends("global_monthly_weather_cluster")
+    # monthly_weather_cluster = GlobalMonthlyWeatherClusters()
+    # monthly_weather_trends = GlobalMonthlyWeatherTrends("global_monthly_weather_cluster")
     frontend = GlobalMonthlyWeatherTrendsFrontend()

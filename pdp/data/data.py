@@ -56,11 +56,15 @@ class DataSet:
 
     def write_jdbc(self, table_name: str):
         table = self.get_table(table_name)
-        table.df.write \
-        .jdbc(
-            url="jdbc:mysql://10.0.0.85:3306/weather?permitMysqlScheme",
-            table=f"{table.name}",
-            properties={"user": "ross", "password": "p@sswor!", "driver": "org.mariadb.jdbc.Driver"}
+        (
+            table
+            .df.write
+            .mode(table.mode)
+            .jdbc(
+                url=f"jdbc:mysql://10.0.0.85:3306/{table.schema}?permitMysqlScheme",
+                table=f"{table.name}",
+                properties={"user": "ross", "password": "p@sswor!", "driver": "org.mariadb.jdbc.Driver"}
+            )
         )
 
     def write_all_jdbc(self):

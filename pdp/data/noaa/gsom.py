@@ -336,7 +336,7 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
             frontend = frontend.unionByName(frontend_years, allowMissingColumns=True)
 
         return DataSet([
-            DataTable("noaa", "global_monthly_trends_frontend", frontend, "overwrite")
+            DataTable("weather", "monthly_trends", frontend, "overwrite")
         ])
 
     def write(self, write_dataset: DataSet):
