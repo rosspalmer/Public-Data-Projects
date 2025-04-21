@@ -155,7 +155,7 @@ class StationClusters(SparkTask):
             .groupby("cluster_id")
             .applyInPandas(
                 calculate_cluster_center,
-                "cluster_id long, network_id string, center_lat float, center_long float"
+                "cluster_id string, network_id string, center_lat float, center_long float"
             )
         ).persist()
 
@@ -201,7 +201,7 @@ class StationClusters(SparkTask):
         print(f'Number of stations: {len(station_coords)}')
         print(f'Number of clusters: {num_clusters}')
 
-        station_coords['cluster_id'] = f"{network_id}-" + pd.Series(cluster_assignments).map(str)
+        station_coords['cluster_id'] = cluster_assignments
 
         station_network_clusters = (
             spark.createDataFrame(station_coords[['cluster_id', 'ghcn_id']])
@@ -210,6 +210,7 @@ class StationClusters(SparkTask):
             .agg(
                 F.collect_set("ghcn_id").alias("station_ids")
             )
+            .withColumn("cluster_id", F.concat(F.lit(f"{network_id}-"), F.col("cluster_id")))
             .withColumn("network_id", F.lit(network_id))
         )
 
