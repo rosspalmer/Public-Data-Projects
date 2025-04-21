@@ -339,6 +339,8 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
             DataTable("noaa", "global_monthly_trends_frontend", frontend, "overwrite")
         ])
 
+    def write(self, write_dataset: DataSet):
+        write_dataset.write_all_jdbc()
 
         # TODO Remove once array format is confirmed to work
         # frontend = (
