@@ -59,7 +59,7 @@ class DataSet:
         table.df.write \
         .jdbc(
             url="jdbc:mysql://10.0.0.85:3306/weather?permitMysqlScheme",
-            table=f"{table.schema}.{table.name}",
+            table=f"{table.name}",
             properties={"user": "ross", "password": "p@sswor!", "driver": "org.mariadb.jdbc.Driver"}
         )
 
