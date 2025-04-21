@@ -152,7 +152,7 @@ class StationClusters(SparkTask):
 
         cluster_centers = (
             cluster_assignments
-            .select("cluster_id", F.explode("station_ids").alias("ghcn_id"))
+            .select("cluster_id", "network_id", F.explode("station_ids").alias("ghcn_id"))
             .join(stations.select("ghcn_id", "lat", "long"), "ghcn_id")
             .groupby("cluster_id", "network_id")
             .applyInPandas(
