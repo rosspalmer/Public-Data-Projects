@@ -149,6 +149,7 @@ class StationClusters(SparkTask):
 
         cluster_centers = (
             cluster_assignments
+            .drop("network_id")
             .withColumn("ghcn_id", F.explode("station_ids"))
             .join(stations, "ghcn_id")
             .groupby("cluster_id")
