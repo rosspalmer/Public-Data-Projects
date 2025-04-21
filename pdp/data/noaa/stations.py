@@ -141,7 +141,6 @@ class StationClusters(SparkTask):
             centermost_point = min(coord_list, key=lambda point: great_circle(point, centroid).m)
             df = pd.DataFrame({
                 "cluster_id": keys[0],
-                "network_id": keys[1],
                 "center_lat": [centermost_point[0]],
                 "center_long": [centermost_point[1]]
             })
@@ -152,12 +151,12 @@ class StationClusters(SparkTask):
 
         cluster_centers = (
             cluster_assignments
-            .select("cluster_id", "network_id", F.explode("station_ids").alias("ghcn_id"))
+            .select("cluster_id", F.explode("station_ids").alias("ghcn_id"))
             .join(stations.select("ghcn_id", "lat", "long"), "ghcn_id")
-            .groupby("cluster_id", "network_id")
+            .groupby("cluster_id")
             .applyInPandas(
                 calculate_cluster_center,
-                "cluster_id string, network_id string, center_lat float, center_long float"
+                "cluster_id string, center_lat float, center_long float"
             )
         ).persist()
 
