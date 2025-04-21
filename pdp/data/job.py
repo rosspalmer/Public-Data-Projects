@@ -55,6 +55,7 @@ class SparkJob:
            .appName(self.name)
            .config("spark.log.level", "ERROR")
            .config("spark.jars", "mariadb-java-client-3.5.3.jar")
+           .config("spark.driver.maxResultSize", "4G")
            .config("spark.sql.warehouse.dir", "file:/mnt/lake-fs/spark-warehouse")
            .config("spark.databricks.delta.schema.autoMerge.enabled", True)
            .enableHiveSupport()
