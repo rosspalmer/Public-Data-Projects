@@ -1,73 +1,44 @@
-// const dataFields = {
-//   TAVG: "average_daily_temperature",
-//   TMAX: "average_daily_max_temperature",
-//   TMIN: "average_daily_min_temperature",
-//   ADPT: "average_dew_point_temperature",
-//   // Continue with the other data fields...
-// };
+// GLOBAL VARIABLES AND TEST DATA 
+let lat;
+let lng;
 
-const exampleData = {
-  labels: [
-    "2025-04-01", // Example dates
-    "2025-04-02",
-    "2025-04-03",
-    "2025-04-04",
-    "2025-04-05",
-    "2025-04-06",
-    "2025-04-07",
-  ],
-  temperatures: [
-    68, // Average temperature for April 1st
-    70, // Average temperature for April 2nd
-    72, // Average temperature for April 3rd
-    65, // Average temperature for April 4th
-    74, // Average temperature for April 5th
-    71, // Average temperature for April 6th
-    69, // Average temperature for April 7th
+const exampleStations = {
+  stations: [
+    {
+      ghcn_id: "USC00051528",
+      lat: 39.2203,
+      long: -105.2783,
+      distance_mil: 0.23,
+      elevation_m: 2095,
+      name: "CHEESMAN",
+      city: "Bailey",
+      county: "Park County",
+      state: "Colorado",
+    },
+    {
+      ghcn_id: "USC00053005",
+      lat: 40.5764,
+      long: -105.0858,
+      distance_mil: 120.0,
+      elevation_m: 1525,
+      name: "FT COLLINS",
+      city: "Fort Collins",
+      county: "Park County",
+      state: "Colorado",
+    },
+    {
+      ghcn_id: "USC00051528",
+      lat: 37.1997,
+      long: -108.4892,
+      distance_mil: 230.0,
+      elevation_m: 2176,
+      name: "MESA VERDE NP",
+      city: "Cortez",
+      county: "Park County",
+      state: "Colorado",
+    },
   ],
 };
-
-// Function to display data fields
-function displayDataFields() {
-  const container = document.getElementById("data-container");
-  Object.keys(dataFields).forEach((key) => {
-    const div = document.createElement("div");
-    div.innerText = `${key}: ${dataFields[key]}`;
-    container.appendChild(div);
-  });
-}
-
-// Initialize chart
-function initializeChart() {
-  const ctx = document.getElementById("tempChart").getContext("2d");
-  const tempChart = new Chart(ctx, {
-    type: "line",
-    data: {
-      // labels: [],
-      // testing example
-      labels: exampleData.labels,
-      datasets: [
-        {
-          label: "Temperature Data",
-          //data: [],
-          //   testing example
-          data: exampleData.temperatures,
-          borderColor: "rgba(75, 192, 192, 1)",
-          borderWidth: 1,
-          fill: false,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: {
-          beginAtZero: true,
-        },
-      },
-    },
-  });
-}
 
 function displayMap() {
   var map = L.map("map").setView([37.7749, -122.4194], 5); // Default view centered on US
@@ -105,12 +76,92 @@ function displayMap() {
     });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  initializeComponents();
-});
+function convertZipCode() {
+  return new Promise((resolve, reject) => {
+    // Return a promise
+    var zipCode = document.getElementById("zipInput").value;
+    // console.log(zipCode);
+    var apiUrl = `https://nominatim.openstreetmap.org/search?postalcode=${zipCode}&country=USA&format=json`;
 
-function initializeComponents() {
-//   initializeChart(); // Call the chart initialization
-  displayMap(); // Call the map display function
-//   displayDataFields(); // Optionally, show data fields
+    fetch(apiUrl)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.length > 0) {
+          var location = data[0];
+          var lat = location.lat;
+          var lng = location.lon;
+          resolve({ lat, lng }); // Resolve with lat and lng
+        } else {
+          alert("Location not found");
+          reject("Location not found"); // Reject with error message
+        }
+      })
+      .catch((err) => {
+        alert("Error fetching data");
+        reject(err); // Reject on error
+      });
+  });
+}
+
+function getStationData() {
+  convertZipCode()
+  .then(({ lat, lng }) => {
+    console.log(lat, lng);
+
+    // Show popup
+    const popup = document.getElementById("stationsPopup");
+    popup.style.display = "flex";
+
+    // Clear old content
+    const cardContainer = document.getElementById("stationCards");
+    cardContainer.innerHTML = "";
+
+    // Build station cards
+    exampleStations.stations.forEach((station) => {
+      const card = document.createElement("div");
+      card.className = "station-card";
+
+      const title = document.createElement("div");
+      title.className = "station-title";
+
+      const nameSpan = document.createElement("span");
+      nameSpan.textContent = station.name;
+
+      const distSpan = document.createElement("span");
+      distSpan.textContent = `${station.distance_mil.toFixed(1)} mi`;
+
+      title.appendChild(nameSpan);
+      title.appendChild(distSpan);
+      card.appendChild(title);
+
+      const details = document.createElement("div");
+      details.className = "station-details";
+
+      const createP = (label, value) => {
+        const p = document.createElement("p");
+        p.innerHTML = `<strong>${label}:</strong> ${value}`;
+        return p;
+      };
+
+      // Example data, some of this (distance) will probably need to be calculated differently 
+      details.appendChild(createP("Location", `${station.city}, ${station.state}`));
+      details.appendChild(createP("County", station.county));
+      details.appendChild(createP("Elevation", `${station.elevation_m} m`));
+      details.appendChild(createP("Coordinates", `${station.lat}, ${station.long}`));
+      details.appendChild(createP("Station ID", station.ghcn_id));
+
+      card.appendChild(details);
+      cardContainer.appendChild(card);
+
+      // Then we will be able to click on a specific station and pull up the map??
+    });
+  })
+  .catch((err) => {
+    console.error(err);
+  });
+}
+
+// Close button
+function closePopup(){
+  document.getElementById("stationsPopup").style.display = "none";
 }
