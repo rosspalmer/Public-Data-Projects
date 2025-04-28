@@ -6,10 +6,10 @@ from pdp.data.noaa.stations import SurfaceWeatherStations, StationGroups, Statio
 
 with SparkJob("big-homes") as job:
     # parse = ParseGlobalSummaryOfMonth("/mnt/lake-fs/raw/gov/noaa/ncei/gsom")
-    stations = SurfaceWeatherStations("/mnt/lake-fs/raw/gov/noaa/ncei")
-    station_clusters = StationGroups()
-    station_jdbc = StationGroupsFrontend()
-    gsom_by_station = GSOMByStation()
+    # stations = SurfaceWeatherStations("/mnt/lake-fs/raw/gov/noaa/ncei")
+    # station_clusters = StationGroups()
+    # station_jdbc = StationGroupsFrontend()
+    # gsom_by_station = GSOMByStation()
     gsom_by_station_group = GSOMStationGroups()
     monthly_weather_trends = GlobalMonthlyWeatherTrends("monthly_by_group")
     frontend = GlobalMonthlyWeatherTrendsFrontend()

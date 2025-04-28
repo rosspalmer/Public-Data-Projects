@@ -182,7 +182,7 @@ class GSOMStationGroups(SparkTask):
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
-        measurements = read_data.get_table("global_monthly_weather").df
+        measurements = read_data.get_table("monthly_by_station").df
         measurement_columns = list(measurements.columns)
         remove_columns = ["ghcn_id", "month_id", "date_month_start", "year", "month",
                           "date_of_extreme_minimum", "date_of_extreme_maximum",
