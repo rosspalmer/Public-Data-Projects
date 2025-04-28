@@ -209,7 +209,7 @@ class GlobalMonthlyWeatherClusters(SparkTask):
 
 
 class GlobalMonthlyWeatherTrends(SparkTask):
-    TREND_N_YEARS = [5, 10]
+    TREND_N_YEARS = [5, 10, 25]
 
     MEASUREMENT_TRENDS = [
         "average_daily_temperature", "average_daily_min_temperature", "average_daily_max_temperature",
@@ -281,6 +281,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
 
 
 class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
+    ROLLING_N_YEARS = [25]
 
     def __init__(self):
         super().__init__("weather-frontend")
@@ -302,38 +303,33 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
             .groupBy("cluster_id", "month")
         )
 
-        frontend = spark.createDataFrame(data=[], schema=StructType([]))
-        for years in GlobalMonthlyWeatherTrends.TREND_N_YEARS:
+        collect_columns = ['year'] + [
+            f'{c}{suffix}'
+            for c in GlobalMonthlyWeatherTrends.MEASUREMENT_TRENDS
+            for suffix in [''] + [f'_avg{y}' for y in self.ROLLING_N_YEARS]
+        ]
 
-            collect_columns = ['year'] + [
-                f'{c}{suffix}'
-                for c in GlobalMonthlyWeatherTrends.MEASUREMENT_TRENDS
-                for suffix in ['', f'_avg{years}']
-            ]
+        frontend = (
+            base_data
+            .agg(F.collect_list(F.struct(*collect_columns)).alias('data'))
+            .withColumn("data", F.sort_array("data"))
+            .select(
+                F.col("cluster_id"),
+                F.col("month"),
+                F.to_json(F.col("data").getField("year")),
+                F.create_map(*[
+                        col
+                        for name in collect_columns
+                        for col in [
+                            F.lit(name),
+                            F.col(f"data").getField(name)
+                        ]
+                ]).alias("data")
 
-            frontend_years = (
-                base_data
-                .agg(F.collect_list(F.struct(*collect_columns)).alias('data'))
-                .withColumn("data", F.sort_array("data"))
-                .select(
-                    F.col("cluster_id"),
-                    F.col("month"),
-                    F.lit(years).alias("rolling_n"),
-                    F.create_map(*[
-                            col
-                            for name in collect_columns
-                            for col in [
-                                F.lit(re.sub(r'_avg\d+$', '_avg', name)),
-                                F.col(f"data").getField(name)
-                            ]
-                    ]).alias("json")
-                )
-                .withColumn("json", F.to_json(
-                    F.map_filter("json", lambda k,v: F.array_size(F.array_compact(v)) > F.lit(0))
-                ))
             )
-
-            frontend = frontend.unionByName(frontend_years, allowMissingColumns=True)
+            .withColumn("data",  F.map_filter("data", lambda k,v: F.array_size(F.array_compact(v)) > F.lit(0)))
+            .withColumn("data", F.to_json("data"))
+        )
 
         return DataSet([
             DataTable("weather", "monthly_trends", frontend, "overwrite")
