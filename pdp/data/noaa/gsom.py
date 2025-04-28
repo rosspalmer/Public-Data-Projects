@@ -93,8 +93,6 @@ class GlobalMonthlyWeather(SparkTask):
         "EVAP": ("total_evaporation", "decimal(16,3)", "a,M,Q,S"),
         "PRCP": ("total_precipitation", "decimal(16,3)", "a,M,Q,S"),
         "SNOW": ("total_snowfall", "decimal(16,3)", "a,M,Q,S"),
-        "DSND": ("days_with_snow_depth", "int", "a,S"),
-        "DSNW": ("days_with_snowfall", "int", "a,S"),
         "DT00": ("days_below_zero", "int", "a,S"),
         "DT32": ("days_below_freezing", "int", "a,S"),
         "DT70": ("days_above_70", "int", "a,S"),
@@ -103,6 +101,8 @@ class GlobalMonthlyWeather(SparkTask):
         "CLDD": ("cooling_degree_days", "int", "a,S"),
         "HDSD": ("heating_degree_days_season", "int", "a,S"),
         "HTDD": ("heating_degree_days", "int", "a,S"),
+        "DSND": ("days_with_snow_depth", "int", "a,S"),
+        "DSNW": ("days_with_snowfall", "int", "a,S"),
         "DYFG": ("days_with_fog", "int"),
         "DYHF": ("days_with_heavy_fog", "int"),
         "DYTS": ("days_with_thunderstorm", "int")
@@ -211,15 +211,9 @@ class GlobalMonthlyWeatherClusters(SparkTask):
 class GlobalMonthlyWeatherTrends(SparkTask):
     TREND_N_YEARS = [5, 10, 25]
 
-    MEASUREMENT_TRENDS = [
-        "average_daily_temperature", "average_daily_min_temperature", "average_daily_max_temperature",
-        "average_relative_humidity", "average_min_relative_humidity", "average_max_relative_humidity",
-        "total_evaporation", "total_precipitation", "total_snowfall",
-        "days_with_snowfall", "days_with_thunderstorm"
-    ]
     SUPPORTED_TABLES = {
-        "global_monthly_weather": {"mode": "station", "keys": ["ghcn_id"]},
-        "global_monthly_weather_cluster": {"mode": "cluster", "keys": ["cluster_id"]}
+        "global_monthly_weather": {"mode": "station", "key": "ghcn_id"},
+        "global_monthly_weather_cluster": {"mode": "cluster", "key": "cluster_id"}
     }
 
     def __init__(self, read_table: str):
@@ -227,7 +221,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
             raise Exception(f"Table {read_table} is not supported")
         self.read_table = read_table
         self.mode = self.SUPPORTED_TABLES[read_table]["mode"]
-        self.keys = self.SUPPORTED_TABLES[read_table]["keys"]
+        self.key = self.SUPPORTED_TABLES[read_table]["key"]
         super().__init__(f"monthly-weather-{self.mode}-trends")
 
     def read(self, spark: SparkSession) -> DataSet:
@@ -242,7 +236,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
             .withColumn("has_data", F.lit(True))
         )
 
-        station_range: DataFrame = measurements.select(self.keys).distinct()
+        station_range: DataFrame = measurements.select(self.key).distinct()
         years_range: DataFrame = spark.createDataFrame(data=[Row(year=y) for y in range(1850, 2025)])
         months_range: DataFrame = spark.createDataFrame(data=[Row(month=m) for m in range(1, 13)])
         full_data_range: DataFrame = station_range.crossJoin(years_range).crossJoin(months_range)
@@ -253,13 +247,12 @@ class GlobalMonthlyWeatherTrends(SparkTask):
 
         # Start `global_monthly_weather_trends` table by calculating rolling
         # averages of n past years for each station and month
-        partition_by = self.keys + ["month"]
+        partition_by = [self.key, "month"]
         grouping_window = Window().partitionBy(partition_by).orderBy("year")
         trend_windows = {n: grouping_window.rowsBetween(-(n-1), 0) for n in self.TREND_N_YEARS}
 
         trend_columns = (
-            [F.col(c) for c in self.keys] +
-            [F.col("month_id"), F.col("year"), F.col("month")] +
+            [F.col(self.key), F.col("month_id"), F.col("year"), F.col("month")] +
             [
                 F.when(F.count(c).over(w) == F.lit(n), F.avg(c).over(w).cast("decimal(16,3)")).alias(f"{c}_avg{n}")
                 for c in measurement_column_names
@@ -269,7 +262,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
 
         trends = (
             full_data_range
-            .join(measurements, self.keys + ["year", "month"], "left")
+            .join(measurements, [self.key, "year", "month"], "left")
             .select(trend_columns)
         )
 
@@ -304,8 +297,8 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
         )
 
         collect_columns = ['year'] + [
-            f'{c}{suffix}'
-            for c in GlobalMonthlyWeatherTrends.MEASUREMENT_TRENDS
+            f'{c[0]}{suffix}'
+            for c in GlobalMonthlyWeather.MEASUREMENT_COLUMNS.values()
             for suffix in [''] + [f'_avg{y}' for y in self.ROLLING_N_YEARS]
         ]
 
