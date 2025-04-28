@@ -21,7 +21,8 @@ dependencies = [
   "plotly",
   "scikit-learn",
   "geopy",
-  "mariadb"
+  "mariadb",
+  "httpie"
 ]
 
 description = "Application for Public Data Projects"
