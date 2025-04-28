@@ -71,7 +71,7 @@ class ParseGlobalSummaryOfMonth(SparkTask):
         return db
 
 
-class GlobalMonthlyWeather(SparkTask):
+class GSOMStations(SparkTask):
     MEASUREMENT_COLUMNS = {
         "TAVG": ("average_daily_temperature", "decimal(16,3)", "a,S"),
         "TMAX": ("average_daily_max_temperature", "decimal(16,3)", "a,S"),
@@ -119,7 +119,7 @@ class GlobalMonthlyWeather(SparkTask):
     }
 
     def __init__(self):
-        super().__init__("monthly-weather")
+        super().__init__("monthly-station")
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
@@ -157,27 +157,27 @@ class GlobalMonthlyWeather(SparkTask):
           ] + [
               # Convert to type defined in section above and use long form name
               F.col(k).cast(v[1]).alias(v[0])
-              for k, v in GlobalMonthlyWeather.MEASUREMENT_COLUMNS.items() if k in raw_columns
+              for k, v in GSOMStations.MEASUREMENT_COLUMNS.items() if k in raw_columns
           ]
 
         measurements = raw.df.select(select_measurements)
 
         transformed = DataSet([
-            DataTable("noaa", "global_monthly_weather", measurements, "overwrite"),
+            DataTable("noaa", "monthly_by_station", measurements, "overwrite"),
         ])
 
         return transformed
 
 
-class GlobalMonthlyWeatherClusters(SparkTask):
+class GSOMStationGroups(SparkTask):
 
     def __init__(self):
-        super().__init__("monthly-weather-clusters")
+        super().__init__("gsom-station-groups")
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
-            DataTable("noaa", "station_clusters"),
-            DataTable("noaa", "global_monthly_weather"),
+            DataTable("noaa", "station_groups"),
+            DataTable("noaa", "monthly_by_station"),
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
@@ -190,18 +190,18 @@ class GlobalMonthlyWeatherClusters(SparkTask):
         for c in remove_columns:
             measurement_columns.remove(c)
 
-        station_clusters = (
-            read_data.get_table("station_clusters").df
+        station_groups = (
+            read_data.get_table("station_groups").df
             .select(
-                "cluster_id",
+                "group_id",
                 F.explode("station_ids").alias("ghcn_id")
             )
         )
 
-        cluster_averages = (
-            station_clusters
-            .join(read_data.get_table("global_monthly_weather").df, "ghcn_id")
-            .groupby("cluster_id", "month_id")
+        group_averages = (
+            station_groups
+            .join(read_data.get_table("monthly_by_station").df, "ghcn_id")
+            .groupby("group_id", "month_id")
             .agg(*[c for m in measurement_columns for c in [
                     F.avg(m).alias(m),
                     F.count(m).alias(f'{m}_count'),
@@ -214,7 +214,7 @@ class GlobalMonthlyWeatherClusters(SparkTask):
         )
 
         return DataSet([
-            DataTable("noaa", "global_monthly_weather_cluster", cluster_averages, "overwrite")
+            DataTable("noaa", "monthly_by_group", group_averages, "overwrite")
         ])
 
 
@@ -222,8 +222,8 @@ class GlobalMonthlyWeatherTrends(SparkTask):
     TREND_N_YEARS = [5, 10, 25]
 
     SUPPORTED_TABLES = {
-        "global_monthly_weather": {"mode": "station", "key": "ghcn_id"},
-        "global_monthly_weather_cluster": {"mode": "cluster", "key": "cluster_id"}
+        "monthly_by_station": {"mode": "station", "key": "ghcn_id"},
+        "monthly_by_group": {"mode": "station_group", "key": "group_id"}
     }
 
     def __init__(self, read_table: str):
@@ -252,7 +252,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
         full_data_range: DataFrame = station_range.crossJoin(years_range).crossJoin(months_range)
 
         measurement_column_names = [v[0]
-                                    for v in GlobalMonthlyWeather.MEASUREMENT_COLUMNS.values()
+                                    for v in GSOMStations.MEASUREMENT_COLUMNS.values()
                                     if v[0] in set(measurements.columns)]
 
         # Start `global_monthly_weather_trends` table by calculating rolling
@@ -291,24 +291,24 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
-            DataTable("noaa", "global_monthly_weather_cluster"),
-            DataTable("noaa", "global_monthly_weather_cluster_trends")
+            DataTable("noaa", "monthly_by_group"),
+            DataTable("noaa", "monthly_trends_by_group")
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
-        measurements = read_data.get_table("global_monthly_weather_cluster").df
-        trends = read_data.get_table("global_monthly_weather_cluster_trends").df
+        measurements = read_data.get_table("monthly_by_group").df
+        trends = read_data.get_table("monthly_trends_by_group").df
 
         base_data = (
             trends
-            .join(measurements, ["cluster_id", "month", "year"], "left")
-            .groupBy("cluster_id", "month")
+            .join(measurements, ["group_id", "month", "year"], "left")
+            .groupBy("group_id", "month")
         )
 
         collect_columns = ['year'] + [
             f'{c[0]}{suffix}'
-            for c in GlobalMonthlyWeather.MEASUREMENT_COLUMNS.values()
+            for c in GSOMStations.MEASUREMENT_COLUMNS.values()
             for suffix in [''] + [f'_avg{y}' for y in self.ROLLING_N_YEARS]
         ]
 
@@ -317,7 +317,7 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
             .agg(F.collect_list(F.struct(*collect_columns)).alias('data'))
             .withColumn("data", F.sort_array("data"))
             .select(
-                F.col("cluster_id"),
+                F.col("group_id"),
                 F.col("month"),
                 F.to_json(F.col("data").getField("year")),
                 F.create_map(*[
