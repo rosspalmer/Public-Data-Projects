@@ -54,7 +54,8 @@ class SurfaceWeatherStations(SparkTask):
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
-        network_name_udf = F.udf(lambda x: self.NETWORK_ID_NAMES.get(x), StringType())
+        network_name_map = {k: v for k, v in self.NETWORK_ID_NAMES.items()}
+        network_name_udf = F.udf(lambda x: network_name_map.get(x), StringType())
 
         raw = (
             read_data.get_table("raw_global_stations").df
