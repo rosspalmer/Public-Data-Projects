@@ -71,7 +71,7 @@ class ParseGlobalSummaryOfMonth(SparkTask):
         return db
 
 
-class GSOMStations(SparkTask):
+class GSOMByStation(SparkTask):
     MEASUREMENT_COLUMNS = {
         "TAVG": ("average_daily_temperature", "decimal(16,3)", "a,S"),
         "TMAX": ("average_daily_max_temperature", "decimal(16,3)", "a,S"),
@@ -157,7 +157,7 @@ class GSOMStations(SparkTask):
           ] + [
               # Convert to type defined in section above and use long form name
               F.col(k).cast(v[1]).alias(v[0])
-              for k, v in GSOMStations.MEASUREMENT_COLUMNS.items() if k in raw_columns
+              for k, v in GSOMByStation.MEASUREMENT_COLUMNS.items() if k in raw_columns
           ]
 
         measurements = raw.df.select(select_measurements)
@@ -252,7 +252,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
         full_data_range: DataFrame = station_range.crossJoin(years_range).crossJoin(months_range)
 
         measurement_column_names = [v[0]
-                                    for v in GSOMStations.MEASUREMENT_COLUMNS.values()
+                                    for v in GSOMByStation.MEASUREMENT_COLUMNS.values()
                                     if v[0] in set(measurements.columns)]
 
         # Start `global_monthly_weather_trends` table by calculating rolling
@@ -308,7 +308,7 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
 
         collect_columns = ['year'] + [
             f'{c[0]}{suffix}'
-            for c in GSOMStations.MEASUREMENT_COLUMNS.values()
+            for c in GSOMByStation.MEASUREMENT_COLUMNS.values()
             for suffix in [''] + [f'_avg{y}' for y in self.ROLLING_N_YEARS]
         ]
 

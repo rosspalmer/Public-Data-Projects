@@ -109,10 +109,10 @@ class SurfaceWeatherStations(SparkTask):
             read_data.get_table("raw_global_stations")
         ])
 
-class StationClusters(SparkTask):
+class StationGroups(SparkTask):
 
     def __init__(self):
-        super().__init__("station-clusters")
+        super().__init__("station-groups")
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
@@ -125,55 +125,55 @@ class StationClusters(SparkTask):
 
         network_types = [n for n in SurfaceWeatherStations.NETWORK_ID_NAMES.keys()]
 
-        cluster_assignments = None
+        group_assignments = None
         for n in network_types:
-            network_cluster_assignments = self._cluster_stations(spark, stations, n)
-            if cluster_assignments is not None:
-                cluster_assignments = cluster_assignments.unionByName(network_cluster_assignments)
+            network_group_assignments = self._group_stations(spark, stations, n)
+            if group_assignments is not None:
+                group_assignments = group_assignments.unionByName(network_group_assignments)
             else:
-                cluster_assignments = network_cluster_assignments
-        cluster_assignments = cluster_assignments.persist()
+                group_assignments = network_group_assignments
+        group_assignments = group_assignments.persist()
 
-        def calculate_cluster_center(keys: Any, cluster: pd.DataFrame) -> pd.DataFrame:
-            coord_list = list(zip(cluster["lat"].tolist(), cluster["long"].tolist()))
+        def calculate_group_center(keys: Any, group: pd.DataFrame) -> pd.DataFrame:
+            coord_list = list(zip(group["lat"].tolist(), group["long"].tolist()))
             mp = MultiPoint(coord_list)
             centroid = (mp.centroid.x, mp.centroid.y)
             centermost_point = min(coord_list, key=lambda point: great_circle(point, centroid).m)
             df = pd.DataFrame({
-                "cluster_id": keys[0],
+                "group_id": keys[0],
                 "center_lat": [centermost_point[0]],
                 "center_long": [centermost_point[1]]
             })
             return df
 
         # FIXME remove debug
-        cluster_assignments.show()
+        group_assignments.show()
 
-        cluster_centers = (
-            cluster_assignments
-            .select("cluster_id", F.explode("station_ids").alias("ghcn_id"))
+        group_centers = (
+            group_assignments
+            .select("group_id", F.explode("station_ids").alias("ghcn_id"))
             .join(stations.select("ghcn_id", "lat", "long"), "ghcn_id")
-            .groupby("cluster_id")
+            .groupby("group_id")
             .applyInPandas(
-                calculate_cluster_center,
-                "cluster_id string, center_lat float, center_long float"
+                calculate_group_center,
+                "group_id string, center_lat float, center_long float"
             )
         ).persist()
 
         # FIXME remove debug
-        cluster_centers.show()
+        group_centers.show()
 
-        station_clusters = (
-            cluster_assignments
+        station_groups = (
+            group_assignments
             .withColumn("stations_count", F.size("station_ids"))
-            .join(cluster_centers, "cluster_id", "left")
+            .join(group_centers, "group_id", "left")
         )
 
         return DataSet([
-            DataTable("noaa", "station_clusters", station_clusters, "overwrite"),
+            DataTable("noaa", "station_groups", station_groups, "overwrite"),
         ])
 
-    def _cluster_stations(self, spark: SparkSession, stations: DataFrame, network_id: str) -> DataFrame:
+    def _group_stations(self, spark: SparkSession, stations: DataFrame, network_id: str) -> DataFrame:
 
         station_coords: pd.DataFrame = (
             stations
@@ -196,59 +196,59 @@ class StationClusters(SparkTask):
         )
 
         numpy_coords = station_coords[['lat', 'long']].to_numpy()
-        cluster_assignments = db.fit_predict(np.radians(numpy_coords))
+        group_assignments = db.fit_predict(np.radians(numpy_coords))
 
-        cluster_labels = db.labels_
-        num_clusters = len(set(cluster_labels))
+        group_labels = db.labels_
+        num_groups = len(set(group_labels))
 
         print(f'Fit for {network_id} network')
         print(f'Number of stations: {len(station_coords)}')
-        print(f'Number of clusters: {num_clusters}')
+        print(f'Number of groups: {num_groups}')
 
-        station_coords['cluster_id'] = cluster_assignments
+        station_coords['group_id'] = group_assignments
 
-        station_network_clusters = (
-            spark.createDataFrame(station_coords[['cluster_id', 'ghcn_id']])
+        station_network_groups = (
+            spark.createDataFrame(station_coords[['group_id', 'ghcn_id']])
             .join(stations, "ghcn_id")
-            .groupby("cluster_id")
+            .groupby("group_id")
             .agg(
                 F.collect_set("ghcn_id").alias("station_ids")
             )
-            .withColumn("cluster_id", F.concat(F.lit(f"{network_id}-"), F.col("cluster_id")))
+            .withColumn("group_id", F.concat(F.lit(f"{network_id}-"), F.col("group_id")))
             .withColumn("network_id", F.lit(network_id))
         )
 
-        return station_network_clusters
+        return station_network_groups
 
 
-class StationClustersFrontend(SparkTask):
+class StationGroupsFrontend(SparkTask):
 
     def __init__(self):
-        super().__init__("station-clusters-frontend")
+        super().__init__("station-groups-frontend")
 
     def read(self, spark: SparkSession) -> DataSet:
         tables = [
             DataTable("noaa", "global_stations"),
-            DataTable("noaa", "station_clusters")
+            DataTable("noaa", "station_groups")
         ]
         return DataSet(tables)
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
         stations = read_data.get_table("global_stations").df
-        clusters = read_data.get_table("station_clusters").df
+        groups = read_data.get_table("station_groups").df
 
-        cluster_stations = clusters.select(
-            "cluster_id",
+        group_stations = groups.select(
+            "group_id",
             F.explode("station_ids").alias("ghcn_id")
         )
 
-        clusters = clusters.select("cluster_id", "network_id", "center_lat", "center_long")
+        groups = groups.select("group_id", "network_id", "center_lat", "center_long")
 
         write_data = [
             DataTable("weather", "stations", stations, "overwrite"),
-            DataTable("weather", "clusters", clusters, "overwrite"),
-            DataTable("weather", "cluster_stations", cluster_stations, "overwrite"),
+            DataTable("weather", "station_groups", groups, "overwrite"),
+            DataTable("weather", "group_stations", group_stations, "overwrite"),
         ]
 
         return DataSet(write_data)
