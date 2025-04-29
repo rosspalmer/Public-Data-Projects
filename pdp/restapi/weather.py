@@ -4,9 +4,8 @@ import pandas as pd
 from fastapi import FastAPI
 from geopy.distance import geodesic
 import mariadb
-from shapely.geometry import Point
 
-from pdp.models.weather import WeatherStation, WeatherStationCluster, WeatherMonthlyTrends
+from pdp.models.weather import WeatherStation, WeatherStationGroup, WeatherMonthlyTrends
 
 app = FastAPI()
 
@@ -19,24 +18,24 @@ cur = mariadb.connect(
 
 
 @app.get("/weather-station-groups/{lat},{long}")
-def station_groups(lat: float, long: float, max_distance_km: float = -1.0) -> list[WeatherStationCluster]:
+def station_groups(lat: float, long: float, max_distance_km: float = -1.0) -> list[WeatherStationGroup]:
 
     LOOKUP_N_LIMIT: int = 10
     LOOKUP_DEGREE_LIMIT: float = 5.0
 
-    cluster_candidate_sql = f"""
-    SELECT cluster_id, center_lat, center_long
-    FROM clusters
+    group_candidate_sql = f"""
+    SELECT group_id, center_lat, center_long
+    FROM station_groups
     WHERE ABS({lat} - center_lat) < {LOOKUP_DEGREE_LIMIT}
         AND ABS({long} - center_long) < {LOOKUP_DEGREE_LIMIT}
         AND network_id = 'W'
     """
 
-    cur.execute(cluster_candidate_sql)
+    cur.execute(group_candidate_sql)
 
-    cluster_ids = []; coords_data = []
+    group_ids = []; coords_data = []
     for row in cur:
-        cluster_ids.append(row[0])
+        group_ids.append(row[0])
         coords_data.append((row[1], row[2]))
 
     print('coord complete')
@@ -44,7 +43,7 @@ def station_groups(lat: float, long: float, max_distance_km: float = -1.0) -> li
     def calculate_distance_km(coordinates: (float, float)) -> float:
         return geodesic(coordinates, (lat, long)).km
 
-    coords = pd.DataFrame({'cluster_id': cluster_ids, 'coordinates': coords_data})
+    coords = pd.DataFrame({'group_id': group_ids, 'coordinates': coords_data})
     coords["distance"] = coords["coordinates"].apply(calculate_distance_km)
 
     print('distance complete')
@@ -58,11 +57,11 @@ def station_groups(lat: float, long: float, max_distance_km: float = -1.0) -> li
 
     print('sort + filter complete')
 
-    in_cluster_ids = "('" + "','".join(coords["cluster_id"].tolist()) + "')"
+    in_group_ids = "('" + "','".join(coords["group_id"].tolist()) + "')"
 
     stations_sql = f"""
     SELECT 
-        cs.cluster_id,
+        cs.group_id,
         s.ghcn_id,
         s.network_id,
         s.name,
@@ -71,10 +70,10 @@ def station_groups(lat: float, long: float, max_distance_km: float = -1.0) -> li
         s.city,
         s.country,
         s.state
-    FROM cluster_stations AS cs
+    FROM group_stations AS cs
     JOIN stations AS s 
     ON cs.ghcn_id = s.ghcn_id
-    WHERE cs.cluster_id IN {in_cluster_ids}
+    WHERE cs.group_id IN {in_group_ids}
     """
 
     cur.execute(stations_sql)
@@ -97,17 +96,17 @@ def station_groups(lat: float, long: float, max_distance_km: float = -1.0) -> li
 
     print('stations complete')
 
-    coords["stations"] = coords["cluster_id"].apply(lambda x: stations[x])
+    coords["stations"] = coords["group_id"].apply(lambda x: stations[x])
 
     print(coords)
 
-    output = [WeatherStationCluster(**d) for d in coords.to_dict("records")]
+    output = [WeatherStationGroup(**d) for d in coords.to_dict("records")]
 
     return output
 
 
-@app.get("/weather-monthly-trends/{mode}/{cluster_id}/{month}")
-def weather_monthly_trends(mode: str, cluster_id: str, month: int) -> WeatherMonthlyTrends:
+@app.get("/weather-monthly-trends/{mode}/{group_id}/{month}")
+def weather_monthly_trends(mode: str, group_id: str, month: int) -> WeatherMonthlyTrends:
 
     MODE_COLUMNS = {
         "temperature": [
@@ -136,12 +135,12 @@ def weather_monthly_trends(mode: str, cluster_id: str, month: int) -> WeatherMon
 
     trend_query = f"""
     SELECT
-        cluster_id,
+        group_id,
         month,
         years,
         {','.join(mode_columns)}
     FROM monthly_trends
-    WHERE cluster_id = '{cluster_id}'
+    WHERE group_id = '{group_id}'
         AND month = {month}
     """
 
@@ -149,7 +148,7 @@ def weather_monthly_trends(mode: str, cluster_id: str, month: int) -> WeatherMon
 
     data = cur.next()
     trend_data = {
-        "cluster_id": data[0],
+        "group_id": data[0],
         "month": data[1],
         "years": [int(y) for y in data[2][1:-1].split(',')],
         "data": {
@@ -164,4 +163,4 @@ def weather_monthly_trends(mode: str, cluster_id: str, month: int) -> WeatherMon
 
 
 
-# weather_station_clusters(40.7785, -74.0479, 100)
+# weather_station_groups(40.7785, -74.0479, 100)

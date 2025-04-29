@@ -12,8 +12,8 @@ class WeatherStation(BaseModel):
     state: str = None
 
 
-class WeatherStationCluster(BaseModel):
-    cluster_id: str
+class WeatherStationGroup(BaseModel):
+    group_id: str
     coordinates: tuple[float, float]
     stations: list[WeatherStation]
     distance: float = 0.0

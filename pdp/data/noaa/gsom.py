@@ -317,21 +317,10 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
             .agg(F.collect_list(F.struct(*collect_columns)).alias('data'))
             .withColumn("data", F.sort_array("data"))
             .select(
-                F.col("group_id"),
-                F.col("month"),
-                F.to_json(F.col("data").getField("year")),
-                F.create_map(*[
-                        col
-                        for name in collect_columns
-                        for col in [
-                            F.lit(name),
-                            F.col(f"data").getField(name)
-                        ]
-                ]).alias("data")
-
+                [F.col("group_id"), F.col("month")]
+                + [F.col("data").getField(c) for c in collect_columns]
             )
-            .withColumn("data",  F.map_filter("data", lambda k,v: F.array_size(F.array_compact(v)) > F.lit(0)))
-            .withColumn("data", F.to_json("data"))
+            # .withColumn("data",  F.map_filter("data", lambda k,v: F.array_size(F.array_compact(v)) > F.lit(0)))
         )
 
         return DataSet([
