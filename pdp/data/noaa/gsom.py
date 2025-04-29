@@ -312,13 +312,15 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
             for suffix in [''] + [f'_avg{y}' for y in self.ROLLING_N_YEARS]
         ]
 
+        print(f"collect columns: {collect_columns}")
+
         frontend = (
             base_data
             .agg(F.collect_list(F.struct(*collect_columns)).alias('data'))
             .withColumn("data", F.sort_array("data"))
             .select(
                 [F.col("group_id"), F.col("month")]
-                + [F.to_json(F.col("data").getField(c)) for c in collect_columns]
+                + [F.to_json(F.col("data").getField(c)).alias(c) for c in collect_columns]
             )
             # .withColumn("data",  F.map_filter("data", lambda k,v: F.array_size(F.array_compact(v)) > F.lit(0)))
         )
