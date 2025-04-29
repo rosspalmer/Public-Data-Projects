@@ -292,13 +292,13 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
             DataTable("noaa", "monthly_by_group"),
-            DataTable("noaa", "monthly_trends_by_group")
+            DataTable("noaa", "monthly_by_group_trends")
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
         measurements = read_data.get_table("monthly_by_group").df
-        trends = read_data.get_table("monthly_trends_by_group").df
+        trends = read_data.get_table("monthly_by_group_trends").df
 
         base_data = (
             trends

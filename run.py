@@ -10,6 +10,6 @@ with SparkJob("big-homes") as job:
     # station_clusters = StationGroups()
     # station_jdbc = StationGroupsFrontend()
     # gsom_by_station = GSOMByStation()
-    gsom_by_station_group = GSOMStationGroups()
-    monthly_weather_trends = GlobalMonthlyWeatherTrends("monthly_by_group")
+    # gsom_by_station_group = GSOMStationGroups()
+    # monthly_weather_trends = GlobalMonthlyWeatherTrends("monthly_by_group")
     frontend = GlobalMonthlyWeatherTrendsFrontend()
