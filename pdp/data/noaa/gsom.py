@@ -318,7 +318,7 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
             .withColumn("data", F.sort_array("data"))
             .select(
                 [F.col("group_id"), F.col("month")]
-                + [F.col("data").getField(c) for c in collect_columns]
+                + [F.to_json(F.col("data").getField(c)) for c in collect_columns]
             )
             # .withColumn("data",  F.map_filter("data", lambda k,v: F.array_size(F.array_compact(v)) > F.lit(0)))
         )
