@@ -5,7 +5,7 @@ from typing import Iterator
 
 import pandas as pd
 import pyspark.sql.functions as F
-from pyspark.sql import Row, SparkSession
+from pyspark.sql import Row, SparkSession, Column
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.types import StructType
 from pyspark.sql.window import Window
@@ -315,15 +315,21 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
 
         print(f"collect columns: {collect_columns}")
 
+        def get_data_field(field_name: str) -> Column:
+            field_array = F.col("data").getField(field_name)
+            null_empty_array = F.when(
+                F.array_size(F.array_compact(field_array)) > F.lit(0),
+                F.to_json(field_array)
+            ).otherwise(F.lit(None))
+            return null_empty_array
+
         frontend = (
             base_data
             .agg(F.collect_list(F.struct(*collect_columns)).alias('data'))
             .withColumn("data", F.sort_array("data"))
             .select(
-                [F.col("group_id"), F.col("month")]
-                + [F.to_json(F.col("data").getField(c)).alias(c) for c in collect_columns]
+                [F.col("group_id"), F.col("month")] + [get_data_field(c).alias(c) for c in collect_columns]
             )
-            # .withColumn("data",  F.map_filter("data", lambda k,v: F.array_size(F.array_compact(v)) > F.lit(0)))
         )
 
         return DataSet([
