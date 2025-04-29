@@ -308,7 +308,7 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
 
         collect_columns = ['year'] + [
             f'{c[0]}{suffix}'
-            for c in GSOMByStation.MEASUREMENT_COLUMNS.values()
+            for c in GSOMByStation.MEASUREMENT_COLUMNS.values() if c in measurements.columns
             for suffix in [''] + [f'_avg{y}' for y in self.ROLLING_N_YEARS]
         ]
 
