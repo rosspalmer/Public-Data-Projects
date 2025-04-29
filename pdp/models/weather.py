@@ -20,8 +20,7 @@ class WeatherStationGroup(BaseModel):
 
 
 class WeatherMonthlyTrends(BaseModel):
-    cluster_id: str
-    network_id: str
+    group_id: str
     month: int
     years: list[int]
-    data: dict[str, list[float | int]]
+    data: dict[str, list[float | int | None]]

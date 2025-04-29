@@ -97,9 +97,6 @@ def station_groups(lat: float, long: float, max_distance_km: float = -1.0) -> li
     print('stations complete')
 
     coords["stations"] = coords["group_id"].apply(lambda x: stations[x])
-
-    print(coords)
-
     output = [WeatherStationGroup(**d) for d in coords.to_dict("records")]
 
     return output
@@ -134,25 +131,29 @@ def weather_monthly_trends(mode: str, group_id: str, month: int) -> WeatherMonth
     mode_columns = MODE_COLUMNS[mode]
 
     trend_query = f"""
-    SELECT
-        group_id,
-        month,
-        years,
-        {','.join(mode_columns)}
-    FROM monthly_trends
-    WHERE group_id = '{group_id}'
-        AND month = {month}
-    """
+SELECT
+    group_id,
+    month,
+    year,
+    {',\n\t'.join(mode_columns)}
+FROM monthly_trends
+WHERE group_id = '{group_id}'
+    AND month = {month}
+"""
 
+    print("Start query")
+    print(trend_query)
     cur.execute(trend_query)
+    print("End query")
 
     data = cur.next()
+
     trend_data = {
         "group_id": data[0],
         "month": data[1],
         "years": [int(y) for y in data[2][1:-1].split(',')],
         "data": {
-            c: [float(d) for d in data[3+i]]
+            c: [float(d) if d != 'null' else None for d in data[3+i][1:-1].split(',')]
             for i, c in enumerate(mode_columns)
         }
     }
@@ -163,4 +164,4 @@ def weather_monthly_trends(mode: str, group_id: str, month: int) -> WeatherMonth
 
 
 
-# weather_station_groups(40.7785, -74.0479, 100)
+# weather_monthly_trends("temperature", "W-820", 8)
