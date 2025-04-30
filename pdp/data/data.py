@@ -60,7 +60,7 @@ class DataSet:
 
         jdbc_options = {
             "url": f"jdbc:mysql://10.0.0.85:3306/{table.schema}?permitMysqlScheme",
-            "table": table.name,
+            "dbtable": table.name,
             "user": "ross",
             "password": "p@sswor!",
             "driver": "org.mariadb.jdbc.Driver"

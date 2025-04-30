@@ -130,7 +130,8 @@ def weather_monthly_trends(mode: str, group_id: str, month: int) -> WeatherMonth
         raise Exception(f"Mode {mode} is not listed in MODE_COLUMNS")
     mode_columns = MODE_COLUMNS[mode]
 
-    trend_query = f"""
+    trend_query = \
+f"""
 SELECT
     group_id,
     month,
