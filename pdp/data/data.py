@@ -54,17 +54,28 @@ class DataSet:
         for table_name in self.tables.keys():
             self.write_table(table_name)
 
-    def write_jdbc(self, table_name: str):
+    def write_jdbc(self, table_name: str, extra_options: dict[str, str] = None):
+
         table = self.get_table(table_name)
+
+        jdbc_options = {
+            "url": f"jdbc:mysql://10.0.0.85:3306/{table.schema}?permitMysqlScheme",
+            "table": table.name,
+            "user": "ross",
+            "password": "p@sswor!",
+            "driver": "org.mariadb.jdbc.Driver"
+        }
+
+        if extra_options is not None:
+            jdbc_options.update(extra_options)
+
         (
             table
             .df.write
+            .format("jdbc")
             .mode(table.mode)
-            .jdbc(
-                url=f"jdbc:mysql://10.0.0.85:3306/{table.schema}?permitMysqlScheme",
-                table=f"{table.name}",
-                properties={"user": "ross", "password": "p@sswor!", "driver": "org.mariadb.jdbc.Driver"}
-            )
+            .options(**jdbc_options)
+            .save()
         )
 
     def write_all_jdbc(self):
