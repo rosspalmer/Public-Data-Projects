@@ -337,7 +337,15 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
         ])
 
     def write(self, write_dataset: DataSet):
-        write_dataset.write_all_jdbc()
+
+        define_columns: str = (
+            "group_id VARCHAR(16) primary key,"
+            "month SMALLINT primary key"
+        )
+
+        write_dataset.write_jdbc("monthly_trends", {
+            "customSchema": define_columns
+        })
 
         # TODO Remove once array format is confirmed to work
         # frontend = (
