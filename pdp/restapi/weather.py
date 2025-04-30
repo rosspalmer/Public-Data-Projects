@@ -161,7 +161,3 @@ WHERE group_id = '{group_id}'
     output = WeatherMonthlyTrends(**trend_data)
 
     return output
-
-
-
-# weather_monthly_trends("temperature", "W-820", 8)

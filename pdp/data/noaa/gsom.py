@@ -219,7 +219,7 @@ class GSOMStationGroups(SparkTask):
 
 
 class GlobalMonthlyWeatherTrends(SparkTask):
-    TREND_N_YEARS = [5, 10, 25]
+    TREND_N_YEARS = [5, 10, 20]
 
     SUPPORTED_TABLES = {
         "monthly_by_station": {"mode": "station", "key": "ghcn_id"},
@@ -247,7 +247,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
         )
 
         station_range: DataFrame = measurements.select(self.key).distinct()
-        years_range: DataFrame = spark.createDataFrame(data=[Row(year=y) for y in range(1850, 2025)])
+        years_range: DataFrame = spark.createDataFrame(data=[Row(year=y) for y in range(1900, 2025)])
         months_range: DataFrame = spark.createDataFrame(data=[Row(month=m) for m in range(1, 13)])
         full_data_range: DataFrame = station_range.crossJoin(years_range).crossJoin(months_range)
 
@@ -264,7 +264,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
         trend_columns = (
             [F.col(self.key), F.col("month_id"), F.col("year"), F.col("month")] +
             [
-                F.when(F.count(c).over(w) == F.lit(n), F.avg(c).over(w).cast("decimal(16,3)")).alias(f"{c}_avg{n}")
+                F.when(F.count(c).over(w) >= F.lit(n - 1), F.avg(c).over(w).cast("decimal(16,3)")).alias(f"{c}_avg{n}")
                 for c in measurement_column_names
                 for n, w in trend_windows.items()
             ]
@@ -284,7 +284,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
 
 
 class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
-    ROLLING_N_YEARS = [25]
+    ROLLING_N_YEARS = [5, 20]
 
     def __init__(self):
         super().__init__("weather-frontend")
