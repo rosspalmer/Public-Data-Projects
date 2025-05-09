@@ -102,19 +102,19 @@ def station_groups(lat: float, long: float, max_distance_km: float = -1.0) -> li
     return output
 
 
-@app.get("/weather-monthly-trends/{mode}/{group_id}/{month}")
-def weather_monthly_trends(mode: str, group_id: str, month: int) -> WeatherMonthlyTrends:
+@app.get("/weather-monthly-trends/{report}/{group_id}/{month}")
+def weather_monthly_trends(report: str, group_id: str, month: int) -> WeatherMonthlyTrends:
 
-    MODE_COLUMNS = {
+    REPORT_COLUMNS = {
         "temperature": [
-            "average_daily_temperature", "average_daily_temperature_avg25",
-            "average_daily_min_temperature", "average_daily_min_temperature_avg25",
-            "average_daily_max_temperature", "average_daily_max_temperature_avg25"
+            "average_daily_temperature", "average_daily_temperature_avg20",
+            "average_daily_min_temperature", "average_daily_min_temperature_avg20",
+            "average_daily_max_temperature", "average_daily_max_temperature_avg20"
         ],
         "humidity": [
-            "average_relative_humidity", "average_relative_humidity",
-            "average_min_relative_humidity", "average_min_relative_humidity",
-            "average_max_relative_humidity", "average_max_relative_humidity"
+            "average_relative_humidity", "average_relative_humidity_avg20",
+            "average_min_relative_humidity", "average_min_relative_humidity_avg20",
+            "average_max_relative_humidity", "average_max_relative_humidity_avg20"
         ],
         "precipitation": [
             "total_evaporation",
@@ -126,9 +126,9 @@ def weather_monthly_trends(mode: str, group_id: str, month: int) -> WeatherMonth
         ]
     }
 
-    if mode not in MODE_COLUMNS:
-        raise Exception(f"Mode {mode} is not listed in MODE_COLUMNS")
-    mode_columns = MODE_COLUMNS[mode]
+    if report not in REPORT_COLUMNS:
+        raise Exception(f"Report '{report}' is not listed in REPORT_COLUMNS")
+    report_columns = REPORT_COLUMNS[report]
 
     trend_query = \
 f"""
@@ -136,7 +136,7 @@ SELECT
     group_id,
     month,
     year,
-    {',\n\t'.join(mode_columns)}
+    {',\n\t'.join(report_columns)}
 FROM monthly_trends
 WHERE group_id = '{group_id}'
     AND month = {month}
@@ -155,7 +155,7 @@ WHERE group_id = '{group_id}'
         "years": [int(y) for y in data[2][1:-1].split(',')],
         "data": {
             c: [float(d) if d != 'null' else None for d in data[3+i][1:-1].split(',')]
-            for i, c in enumerate(mode_columns)
+            for i, c in enumerate(report_columns)
         }
     }
 
