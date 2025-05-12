@@ -1,4 +1,5 @@
 from pdp.data.job import SparkJob
+from pdp.data.noaa.ghcnd import GHCNDParseTextFiles
 from pdp.data.noaa.gsom import (GSOMByStation, GSOMStationGroups,
                                 GlobalMonthlyWeatherTrends, GlobalMonthlyWeatherTrendsFrontend)
 from pdp.data.noaa.stations import SurfaceWeatherStations, StationGroups, StationGroupsFrontend
@@ -12,4 +13,5 @@ with SparkJob("big-homes") as job:
     # gsom_by_station = GSOMByStation()
     # gsom_by_station_group = GSOMStationGroups()
     # monthly_weather_trends = GlobalMonthlyWeatherTrends("monthly_by_group")
-    frontend = GlobalMonthlyWeatherTrendsFrontend()
+    # frontend = GlobalMonthlyWeatherTrendsFrontend()
+    daily_parse = GHCNDParseTextFiles("/mnt/lake-fs/raw/gov/noaa/ncei/ghcnd/ghcnd_all")
