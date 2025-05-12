@@ -48,18 +48,18 @@ class GHCNDParseTextFiles(SparkTask):
             start_width = total_id_width + (day - 1) * observation_total_width
             value = TEXT_COL.substr(start_width, VALUE_CHARS).alias(f"VALUE{day}")
             flags = [
-                TEXT_COL.substr(start_width + i, 1).alias()
-                for i, c in enumerate(SINGLE_CHAR_FLAGS)
+                TEXT_COL.substr(start_width + i, 1).alias(f"{f}FLAG{day}")
+                for i, f in enumerate(SINGLE_CHAR_FLAGS)
             ]
             return [value] + flags
 
-        parsed = raw_text.select(
-            [
-                TEXT_COL.substr(start, width).alias(name) for name, start, width in id_column_substr
-            ] + [
-                c for n in range(31) for c in daily_observation(n)
-            ] + [F.col("file_name")]
-        )
+        select_ids = [
+            TEXT_COL.substr(start, width).alias(name) for name, start, width in id_column_substr
+        ]
+
+        select_observations = [c for n in range(31) for c in daily_observation(n)]
+
+        parsed = raw_text.select(select_ids + select_observations + [F.col("file_name")])
 
         return DataSet([DataTable(
             "weather", "raw_ghcnd", parsed, "overwrite"
