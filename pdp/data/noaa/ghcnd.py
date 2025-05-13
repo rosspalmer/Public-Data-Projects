@@ -72,7 +72,7 @@ class GHCNDTransformedValues(SparkTask):
 
     # Defines measurements (decimals) to make as wide form columns,
     # includes full name (with unit) and multiplier to get whole units
-    # (some values given in tenths or 10X)
+    # (some values given in tenths of a unit or 10x)
     MEASUREMENT_COLUMNS = [
 
         # Temperature measurements
@@ -122,9 +122,11 @@ class GHCNDTransformedValues(SparkTask):
         raw = read_data.get_table('raw_ghcnd').df
 
         measurement_lookups = spark.createDataFrame(
-            data=self.MEASUREMENT_COLUMNS,
-            schema="ELEMENT string, name string, multiplier float"
+            data=self.MEASUREMENT_COLUMNS
+            # schema="ELEMENT string, name string, multiplier float"
         )
+
+        measurement_lookups.show()
 
         value_cols = [c for c in raw.columns if c.startswith("VALUE")]
 
