@@ -12,6 +12,8 @@ class GHCNDParseTextFiles(SparkTask):
 
     def read(self, spark: SparkSession) -> DataSet:
 
+        spark.sql("CREATE DATABASE IF NOT EXISTS weather").show()
+
         raw_text = (
             spark.read
             .text(f'{self.all_daily_files_path}/*.dly')
