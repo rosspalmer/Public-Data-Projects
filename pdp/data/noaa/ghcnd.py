@@ -1,4 +1,4 @@
-from pyspark.sql import SparkSession, Column
+from pyspark.sql import SparkSession, Column, Row
 import pyspark.sql.functions as F
 
 from pdp.data.data import DataSet, DataTable
@@ -122,8 +122,7 @@ class GHCNDTransformedValues(SparkTask):
         raw = read_data.get_table('raw_ghcnd').df
 
         measurement_lookups = spark.createDataFrame(
-            data=self.MEASUREMENT_COLUMNS
-            # schema="ELEMENT string, name string, multiplier float"
+            data=[Row(ELEMENT=x, name=y, multiplier=z) for x,y,z in self.MEASUREMENT_COLUMNS]
         )
 
         measurement_lookups.show()
