@@ -131,7 +131,7 @@ class GHCNDTransformedValues(SparkTask):
         value_cols = [c for c in raw.columns if c.startswith("VALUE")]
 
         long_form_values = (
-            raw.melt(id_vars=["ID", "YEAR", "MONTH", "ELEMENT"],
+            raw.melt(ids=["ID", "YEAR", "MONTH", "ELEMENT"],
                      values=value_cols,
                      variableColumnName="DAY")
             .withColumn("DAY", F.regexp_extract("DAY", "VALUE(\\d+)").cast("int"))
@@ -141,5 +141,7 @@ class GHCNDTransformedValues(SparkTask):
         )
 
         values_table = DataTable("weather", "global_daily", long_form_values, "overwrite")
+
+        long_form_values.show()
 
         return DataSet([values_table])
