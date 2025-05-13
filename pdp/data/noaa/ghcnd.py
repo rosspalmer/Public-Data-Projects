@@ -131,9 +131,8 @@ class GHCNDTransformedValues(SparkTask):
         value_cols = [c for c in raw.columns if c.startswith("VALUE")]
 
         long_form_values = (
-            raw.melt(ids=["ID", "YEAR", "MONTH", "ELEMENT"],
-                     values=value_cols,
-                     variableColumnName="DAY")
+            raw.melt(ids=["ID", "YEAR", "MONTH", "ELEMENT"], values=value_cols,
+                     variableColumnName="DAY", valueColumnName="value")
             .withColumn("DAY", F.regexp_extract("DAY", "VALUE(\\d+)").cast("int"))
             .withColumn("date", F.make_date("YEAR", "MONTH", "DAY"))
             .join(measurement_lookups, "ELEMENT", "inner")
