@@ -133,7 +133,7 @@ class GHCNDTransformedValues(SparkTask):
         long_form_values = (
             raw.melt(ids=["ID", "YEAR", "MONTH", "ELEMENT"], values=value_cols,
                      variableColumnName="DAY", valueColumnName="value")
-            .withColumn("DAY", F.regexp_extract("DAY", "VALUE(\\d+)").cast("int"))
+            .withColumn("DAY", F.regexp_extract("DAY", "VALUE(\\d+)", 1).cast("int"))
             .withColumn("date", F.make_date("YEAR", "MONTH", "DAY"))
             .join(measurement_lookups, "ELEMENT", "inner")
             .withColumn("value", F.col("value") * F.col("multiplier"))
