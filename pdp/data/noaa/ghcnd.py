@@ -16,7 +16,7 @@ class GHCNDParseTextFiles(SparkTask):
 
         raw_text = (
             spark.read
-            .text(f'{self.all_daily_files_path}/*.dly')
+            .text(f'{self.all_daily_files_path}/USW00093822.dly')
             .withColumn("file_name", F.input_file_name())
         )
         raw_table = DataTable("weather", "raw_ghcnd_text", raw_text, "overwrite")
@@ -41,7 +41,7 @@ class GHCNDParseTextFiles(SparkTask):
         raw_text = read_data.get_table('raw_ghcnd_text').df
 
         id_column_substr = []
-        total_id_width = 0
+        total_id_width = 1
         for name, width in ID_COLUMNS:
             id_column_substr.append((name, total_id_width, width))
             total_id_width += width
@@ -59,7 +59,7 @@ class GHCNDParseTextFiles(SparkTask):
             TEXT_COL.substr(start, width).alias(name) for name, start, width in id_column_substr
         ]
 
-        select_observations = [c for n in range(31) for c in daily_observation(n)]
+        select_observations = [c for day in range(1, 32) for c in daily_observation(day)]
 
         parsed = raw_text.select(select_ids + select_observations + [F.col("file_name")])
 
