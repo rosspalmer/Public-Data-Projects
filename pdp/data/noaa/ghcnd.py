@@ -121,9 +121,10 @@ class GHCNDTransformedValues(SparkTask):
 
         raw = read_data.get_table('raw_ghcnd').df
 
-        measurement_lookups = spark.createDataFrame(
-            data=[Row(ELEMENT=x, name=y, multiplier=z) for x,y,z in self.MEASUREMENT_COLUMNS]
-        )
+        measurement_lookups = spark.createDataFrame(data=[
+            Row(ELEMENT=x, name=y, multiplier=float(z))
+            for x,y,z in self.MEASUREMENT_COLUMNS
+        ])
 
         measurement_lookups.show()
 
