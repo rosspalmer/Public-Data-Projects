@@ -123,7 +123,7 @@ class GHCNDTransformedValues(SparkTask):
 
         measurement_lookups = spark.createDataFrame(
             data=self.MEASUREMENT_COLUMNS,
-            schema="ELEMENT str, name str, multiplier decimal(3, 5)"
+            schema="ELEMENT string, name string, multiplier decimal(3, 5)"
         )
 
         value_cols = [c for c in raw.columns if c.startswith("VALUE")]
