@@ -70,7 +70,6 @@ class GHCNDParseTextFiles(SparkTask):
             parsed
             .melt(ids=id_columns, values=value_columns,
                   variableColumnName="column_name", valueColumnName="value")
-            .withColumn("value", F.when(F.col("value") != -9999, F.col("value")))
             .withColumn("column_type", F.regexp_extract("column_name", "^([A-Z]+)\\d+$", 1))
             .withColumn("day", F.regexp_extract("column_name", "^[A-Z]+(\\d+)$", 1))
             .withColumn("date", F.make_date("year", "month", "day"))
@@ -151,6 +150,8 @@ class GHCNDTransformedValues(SparkTask):
             ghcnd_long
             .filter(F.col("column_type") == "VALUE")
             .join(measurement_lookups, "element", "inner")
+            .withColumn("value", F.col("value").cast("int"))
+            .withColumn("value", F.when(F.col("value") != -9999, F.col("value")))
             .withColumn("value", F.col("value").cast("int") * F.col("multiplier"))
         )
 
