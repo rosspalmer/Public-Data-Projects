@@ -12,8 +12,6 @@ class GHCNDParseTextFiles(SparkTask):
 
     def read(self, spark: SparkSession) -> DataSet:
 
-        spark.sql("CREATE DATABASE IF NOT EXISTS weather").show()
-
         raw_text = (
             spark.read
             .text(f'{self.all_daily_files_path}/USW00093822.dly')
@@ -50,7 +48,7 @@ class GHCNDParseTextFiles(SparkTask):
             start_width = total_id_width + (day - 1) * observation_total_width
             value = TEXT_COL.substr(start_width, VALUE_CHARS).alias(f"VALUE{day}")
             flags = [
-                TEXT_COL.substr(start_width + i, 1).alias(f"{f}FLAG{day}")
+                TEXT_COL.substr(start_width + VALUE_CHARS + i + 1, 1).alias(f"{f}FLAG{day}")
                 for i, f in enumerate(SINGLE_CHAR_FLAGS)
             ]
             return [value] + flags
@@ -72,15 +70,15 @@ class GHCNDTransformedValues(SparkTask):
 
     # Defines measurements (decimals) to make as wide form columns,
     # includes full name (with unit) and multiplier to get whole units
-    # (some values given in tenths of a unit or 10x)
+    # (some values given in tenths of a unit or 10's of unit)
     MEASUREMENT_COLUMNS = [
 
         # Temperature measurements
-        ("TMAX", "temperature_max_c", 10),
-        ("TMIN", "temperature_min_c", 10),
-        ("TAVG", "temperature_avg_c", 10),
-        ("ADPT", "temperature_avg_dew_point_c", 10),
-        ("AWBT", "temperature_avg_wet_bulb_c", 10),
+        ("TMAX", "temperature_max_c", 0.1),
+        ("TMIN", "temperature_min_c", 0.1),
+        ("TAVG", "temperature_avg_c", 0.1),
+        ("ADPT", "temperature_avg_dew_point_c", 0.1),
+        ("AWBT", "temperature_avg_wet_bulb_c", 0.1),
 
         # Pressure measurements
         ("ASLP", "pressure_sea_level_hpa", 0.1),
@@ -92,10 +90,10 @@ class GHCNDTransformedValues(SparkTask):
         ("RHMX", "relative_humidity_max_pct", 1),
 
         # Precipitation measurements
-        ("PRCP", "precipitation_mm", 10),
+        ("PRCP", "precipitation_mm", 0.1),
         ("SNOW", "snowfall_mm", 1),
         ("SNWD", "snow_depth_mm", 1),
-        ("EVAP", "evaporation_mm", 10),
+        ("EVAP", "evaporation_mm", 0.1),
 
         # Cloud cover measurements
         ("ACMC", "cloudy_all_ceilo_avg_pct", 1),
@@ -106,7 +104,7 @@ class GHCNDTransformedValues(SparkTask):
 
         # Wind measurements
         ("AWDR", "wind_direction_avg_degrees", 1),
-        ("AWND", "wind_speed_avg_ms", 10),
+        ("AWND", "wind_speed_avg_ms", 0.1),
 	   
     ]
 
