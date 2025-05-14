@@ -48,7 +48,7 @@ class GHCNDParseTextFiles(SparkTask):
             start_width = total_id_width + (day - 1) * observation_total_width
             value = TEXT_COL.substr(start_width, VALUE_CHARS).alias(f"VALUE{day}")
             flags = [
-                TEXT_COL.substr(start_width + VALUE_CHARS + i, 1).alias(f"{f}FLAG{day}")
+                TEXT_COL.substr(start_width + VALUE_CHARS + i + 1, 1).alias(f"{f}FLAG{day}")
                 for i, f in enumerate(SINGLE_CHAR_FLAGS)
             ]
             return [value] + flags
