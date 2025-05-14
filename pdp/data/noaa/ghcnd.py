@@ -61,6 +61,8 @@ class GHCNDParseTextFiles(SparkTask):
 
         parsed = raw_text.select(select_ids + select_observations)
 
+        parsed.show(1)
+
         id_columns = [name for name, width in ID_COLUMNS]
         value_columns = [name for name in parsed.columns if name not in id_columns]
 
