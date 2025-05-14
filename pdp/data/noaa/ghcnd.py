@@ -14,7 +14,7 @@ class GHCNDParseTextFiles(SparkTask):
 
         raw_text = (
             spark.read
-            .text(f'{self.all_daily_files_path}/USW00093822.dly')
+            .text(f'{self.all_daily_files_path}/*.dly')
             .withColumn("file_name", F.input_file_name())
         )
         raw_table = DataTable("weather", "raw_ghcnd_text", raw_text, "overwrite")
@@ -81,8 +81,8 @@ class GHCNDTransformedValues(SparkTask):
         ("AWBT", "temperature_avg_wet_bulb_c", 0.1),
 
         # Pressure measurements
-        ("ASLP", "pressure_sea_level_hpa", 0.1),
-        ("ASTP", "pressure_station_level_hpa", 0.1),
+        ("ASLP", "pressure_sea_level_hpa", 10),
+        ("ASTP", "pressure_station_level_hpa", 10),
 
         # Humidity measurements
         ("RHAV", "relative_humidity_avg_pct", 1),
@@ -114,7 +114,7 @@ class GHCNDTransformedValues(SparkTask):
 
     ]
 
-    tenths_columns = {d[1] for d in MEASUREMENT_COLUMNS if d[2] == 0.1}
+    tenths_columns = {c[0] for c in MEASUREMENT_COLUMNS if c[2] == 0.1}
 
     def __init__(self):
         super().__init__("ghcnd-transformed")
@@ -159,16 +159,14 @@ class GHCNDTransformedValues(SparkTask):
 
         pivot_values.show(1)
 
-        formatted_values = (
-            pivot_values
-            .select(
-                [F.col("ghcn_id"), F.col("date")] + [
-                    F.col(c[0]).cast("int").alias(c[1]) if c[2] == 1
-                    else F.col(c[0]).cast("decimal(4, 1)").alias(c[1])
-                    for c in self.MEASUREMENT_COLUMNS if c[0] in pivot_values.columns
-                ]
-            )
-        )
+        select_formatted_values = [
+            F.col(c[0]).cast("decimal(4, 1)").alias(c[1]) if c[0] in self.tenths_columns
+            else F.col(c[0]).cast("int").alias(c[1])
+            for c in self.MEASUREMENT_COLUMNS if c[0] in pivot_values.columns
+        ]
+
+        formatted_values = pivot_values \
+            .select([F.col("ghcn_id"), F.col("date")] + select_formatted_values)
 
         formatted_values.show(1)
 
