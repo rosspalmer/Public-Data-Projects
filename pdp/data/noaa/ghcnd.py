@@ -151,17 +151,19 @@ class GHCNDTransformedValues(SparkTask):
             .sum("value")
         )
 
+        pivot_values.show(1)
+
         formatted_values = (
             pivot_values
             .select(
                 [F.col("ghcn_id"), F.col("date")] + [
-                    F.col(c[1]).cast("int").alias(c[1]) if c[2] == 1
-                    else F.col(c[1]).cast("decimal(4, 1)").alias(c[1])
-                    for c in self.MEASUREMENT_COLUMNS
-                    if c[1] in pivot_values.columns
+                    F.col(c[0]).cast("int").alias(c[1]) if c[2] == 1
+                    else F.col(c[0]).cast("decimal(4, 1)").alias(c[1])
+                    for c in self.MEASUREMENT_COLUMNS if c[0] in pivot_values.columns
                 ]
             )
         )
+
         formatted_values.show(1)
 
         values_table = DataTable("weather", "global_daily", formatted_values, "overwrite")
