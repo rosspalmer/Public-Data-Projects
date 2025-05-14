@@ -14,7 +14,7 @@ class GHCNDParseTextFiles(SparkTask):
 
         raw_text = (
             spark.read
-            .text(f'{self.all_daily_files_path}/USW00093822.dly')
+            .text(f'{self.all_daily_files_path}/*.dly')
             .withColumn("file_name", F.input_file_name())
         )
         raw_table = DataTable("weather", "raw_ghcnd_text", raw_text, "overwrite")
