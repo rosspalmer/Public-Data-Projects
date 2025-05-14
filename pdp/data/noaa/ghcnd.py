@@ -132,8 +132,6 @@ class GHCNDTransformedValues(SparkTask):
             for x,y,z in self.MEASUREMENT_COLUMNS
         ])
 
-        measurement_lookups.show()
-
         value_cols = [c for c in raw.columns if c.startswith("VALUE")]
 
         long_form_values = (
@@ -148,16 +146,12 @@ class GHCNDTransformedValues(SparkTask):
             .drop("YEAR", "MONTH")
         )
 
-        long_form_values.show(1)
-
         pivot_values = (
             long_form_values
             .groupby("ghcn_id", "date")
             .pivot("ELEMENT")
             .sum("value")
         )
-
-        pivot_values.show(1)
 
         select_formatted_values = [
             F.col(c[0]).cast("decimal(4, 1)").alias(c[1]) if c[0] in self.tenths_columns
@@ -167,8 +161,6 @@ class GHCNDTransformedValues(SparkTask):
 
         formatted_values = pivot_values \
             .select([F.col("ghcn_id"), F.col("date")] + select_formatted_values)
-
-        formatted_values.show(1)
 
         values_table = DataTable("weather", "global_daily", formatted_values, "overwrite")
 
