@@ -105,7 +105,13 @@ class GHCNDTransformedValues(SparkTask):
         # Wind measurements
         ("AWDR", "wind_direction_avg_degrees", 1),
         ("AWND", "wind_speed_avg_ms", 0.1),
-	   
+        ("WDF1", "wind_direction_fast_1_min_degrees", 1),
+        ("WSF1", "wind_speed_fast_1_min_ms", 0.1),
+        ("WDF2", "wind_direction_fast_2_min_degrees", 1),
+        ("WSF2", "wind_speed_fast_2_min_ms", 0.1),
+        ("WDF5", "wind_direction_fast_5_sec_degrees", 1),
+        ("WSF5", "wind_speed_fast_5_sec_ms", 0.1),
+
     ]
 
     tenths_columns = {d[1] for d in MEASUREMENT_COLUMNS if d[2] == 0.1}
