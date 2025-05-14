@@ -127,6 +127,29 @@ class GHCNDTransformedValues(SparkTask):
         ("WDF5", "wind_direction_fast_5_sec_degrees", 1),
         ("WSF5", "wind_speed_fast_5_sec_ms", 0.1),
 
+        # Weather events
+        ("WT01", "event_fog", 1),
+        ("WT02", "event_heavy_fog", 1),
+        ("WT03", "event_thunder", 1),
+        ("WT04", "event_ice_sleet", 1),
+        ("WT05", "event_hail", 1),
+        ("WT06", "event_glaze_rime", 1),
+        ("WT07", "event_dust", 1),
+        ("WT08", "event_smoke", 1),
+        ("WT09", "event_blowing_snow", 1),
+        ("WT10", "event_tornado", 1),
+        ("WT11", "event_high_winds", 1),
+        ("WT12", "event_blowing_spray", 1),
+        ("WT13", "event_mist", 1),
+        ("WT14", "event_drizzle", 1),
+        ("WT15", "event_freezing_drizzle", 1),
+        ("WT16", "event_rain", 1),
+        ("WT17", "event_freezing_rain", 1),
+        ("WT18", "event_snow", 1),
+        ("WT19", "event_unknown_precipitation", 1),
+        ("WT21", "event_ground_fog", 1),
+        ("WT22", "event_freezing_fog", 1)
+
     ]
 
     def __init__(self):
