@@ -197,6 +197,6 @@ class GHCNDTransformedValues(SparkTask):
             ])
         )
 
-        values_table = DataTable("weather", "global_daily", wide_form_values, "overwrite")
+        values_table = DataTable("weather", "global_daily_stations", wide_form_values, "overwrite")
 
         return DataSet([values_table])
