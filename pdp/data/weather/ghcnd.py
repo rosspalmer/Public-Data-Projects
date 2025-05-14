@@ -189,7 +189,7 @@ class GHCNDTransformedValues(SparkTask):
 
         wide_form_values = (
             long_form_values
-            .repartition(200)
+            .repartition(2000, "ghcn_id", "date")
             .groupby("ghcn_id", "date")
             .agg(*[
                 get_column(old_name, new_name, multiplier)
