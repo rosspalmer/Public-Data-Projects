@@ -82,7 +82,7 @@ class GHCNDParseTextFiles(SparkTask):
         )])
 
 
-class GHCNDTransformedValues(SparkTask):
+class GHCNDailyByStation(SparkTask):
 
     # Defines measurements (decimals) to make as wide form columns,
     # includes full name (with unit) and multiplier to get whole units
@@ -154,7 +154,7 @@ class GHCNDTransformedValues(SparkTask):
     ]
 
     def __init__(self):
-        super().__init__("ghcnd-transformed")
+        super().__init__("ghcn-daily-by-station")
 
     def read(self, spark: SparkSession) -> DataSet:
         raw = DataTable("weather", "ghcnd_long")
@@ -197,6 +197,6 @@ class GHCNDTransformedValues(SparkTask):
             ])
         )
 
-        values_table = DataTable("weather", "global_daily_stations", wide_form_values, "overwrite")
+        values_table = DataTable("weather", "global_daily_station", wide_form_values, "overwrite")
 
         return DataSet([values_table])
