@@ -158,6 +158,7 @@ class GHCNDTransformedValues(SparkTask):
                     F.col(c[1]).cast("int").alias(c[1]) if c[2] == 1
                     else F.col(c[1]).cast("decimal(4, 1)").alias(c[1])
                     for c in self.MEASUREMENT_COLUMNS
+                    if c[1] in pivot_values.columns
                 ]
             )
         )
