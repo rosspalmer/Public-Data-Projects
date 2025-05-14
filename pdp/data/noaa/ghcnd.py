@@ -61,9 +61,12 @@ class GHCNDParseTextFiles(SparkTask):
 
         parsed = raw_text.select(select_ids + select_observations)
 
+        id_columns = [name for name, width in ID_COLUMNS]
+        value_columns = [name for name in parsed.columns if name not in id_columns]
+
         long_form = (
             parsed
-            .melt(ids=["ghcn_id", "year", "month", "element"],
+            .melt(ids=id_columns, values=value_columns,
                   variableColumnName="column_name", valueColumnName="value")
             .withColumn("value", F.when(F.col("value") != -9999, F.col("value")))
             .withColumn("column_type", F.regexp_extract("column_name", "^([A-Z]+)\\d+$", 1))
