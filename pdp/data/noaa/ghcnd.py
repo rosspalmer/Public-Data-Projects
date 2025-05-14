@@ -46,7 +46,7 @@ class GHCNDParseTextFiles(SparkTask):
 
         def daily_observation(day: int) -> list[Column]:
             start_width = total_id_width + (day - 1) * observation_total_width
-            value = TEXT_COL.substr(start_width, VALUE_CHARS).alias(f"VALUE{day}")
+            value = TEXT_COL.substr(start_width, VALUE_CHARS).cast("int").alias(f"VALUE{day}")
             flags = [
                 TEXT_COL.substr(start_width + VALUE_CHARS + i, 1).alias(f"{f}FLAG{day}")
                 for i, f in enumerate(SINGLE_CHAR_FLAGS)
@@ -108,6 +108,8 @@ class GHCNDTransformedValues(SparkTask):
 	   
     ]
 
+    tenths_columns = {d[1] for d in MEASUREMENT_COLUMNS if d[2] == 0.1}
+
     def __init__(self):
         super().__init__("ghcnd-transformed")
 
@@ -134,11 +136,23 @@ class GHCNDTransformedValues(SparkTask):
             .withColumn("DAY", F.regexp_extract("DAY", "VALUE(\\d+)", 1).cast("int"))
             .withColumn("date", F.make_date("YEAR", "MONTH", "DAY"))
             .join(measurement_lookups, "ELEMENT", "inner")
+            .withColumn("value", F.when(F.col("value") != -9999, F.col("value")))
             .withColumn("value", F.col("value") * F.col("multiplier"))
+            .withColumnRenamed("ID", "ghcn_id")
+            .drop("YEAR", "MONTH")
         )
 
-        values_table = DataTable("weather", "global_daily", long_form_values, "overwrite")
+        long_form_values.show(1)
 
-        long_form_values.show()
+        pivot_values = (
+            long_form_values
+            .groupby("ghcn_id", "date")
+            .pivot("ELEMENT")
+            .sum("value")
+        )
+
+        pivot_values.show(1)
+
+        values_table = DataTable("weather", "global_daily", pivot_values, "overwrite")
 
         return DataSet([values_table])
