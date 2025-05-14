@@ -1,5 +1,6 @@
 from pyspark.sql import SparkSession, Column, Row
 import pyspark.sql.functions as F
+from pyspark.sql.functions import broadcast
 
 from pdp.data.data import DataSet, DataTable
 from pdp.data.job import SparkTask
@@ -163,40 +164,39 @@ class GHCNDTransformedValues(SparkTask):
 
         ghcnd_long = read_data.get_table('ghcnd_long').df
 
-        measurement_lookups = spark.createDataFrame(data=[
-            Row(element=x, name=y, multiplier=float(z))
-            for x,y,z in self.MEASUREMENT_COLUMNS
-        ])
+        # measurement_lookups = spark.createDataFrame(data=[
+        #     Row(element=x, name=y, multiplier=float(z))
+        #     for x,y,z in self.MEASUREMENT_COLUMNS
+        # ])
 
         long_form_values = (
             ghcnd_long
             .filter(F.col("column_type") == "VALUE")
-            .join(measurement_lookups, "element", "inner")
             .withColumn("value", F.col("value").cast("int"))
             .withColumn("value", F.when(F.col("value") != -9999, F.col("value")))
-            .withColumn("value", F.col("value").cast("int") * F.col("multiplier"))
         )
 
-        pivot_values = (
+        def get_column(old_name: str, new_name: str, multiplier: float) -> Column:
+
+            base_value = F.first_value(
+                F.when(F.col("element") == old_name, F.col("value")),
+                ignoreNulls=True
+            )
+            cast_value = base_value.cast("int") if multiplier >= 1 else base_value.cast("decimal(4,1)")
+            multiplied_value = cast_value * F.lit(multiplier)
+
+            return multiplied_value.alias(new_name)
+
+        wide_form_values = (
             long_form_values
+            .repartition(200)
             .groupby("ghcn_id", "date")
-            .pivot("element")
-            .sum("value")
+            .agg([
+                get_column(old_name, new_name, multiplier)
+                for old_name, new_name, multiplier in self.MEASUREMENT_COLUMNS
+            ])
         )
 
-        def generate_formatted_column(old_name: str, new_name: str, multiplier: float) -> Column:
-            if multiplier < 1:
-                return F.col(old_name).cast("decimal(4, 1)").alias(new_name)
-            else:
-                return F.col(old_name).cast("int").alias(new_name)
-
-        formatted_values = pivot_values.select(
-            [F.col("ghcn_id"), F.col("date")] + [
-                generate_formatted_column(c[0], c[1], c[2])
-                for c in self.MEASUREMENT_COLUMNS if c[0] in pivot_values.columns
-            ]
-        )
-
-        values_table = DataTable("weather", "global_daily", formatted_values, "overwrite")
+        values_table = DataTable("weather", "global_daily", wide_form_values, "overwrite")
 
         return DataSet([values_table])
