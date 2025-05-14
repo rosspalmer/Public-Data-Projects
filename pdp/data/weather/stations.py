@@ -35,7 +35,7 @@ class SurfaceWeatherStations(SparkTask):
 
     def read(self, spark: SparkSession) -> DataSet:
 
-        spark.sql("CREATE SCHEMA IF NOT EXISTS noaa")
+        spark.sql("CREATE SCHEMA IF NOT EXISTS weather")
 
         raw = (
             spark
@@ -49,7 +49,7 @@ class SurfaceWeatherStations(SparkTask):
         )
 
         return DataSet([
-            DataTable("noaa", "raw_global_stations", raw, "overwrite")
+            DataTable("weather", "raw_global_stations", raw, "overwrite")
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
@@ -106,7 +106,7 @@ class SurfaceWeatherStations(SparkTask):
         )
 
         return DataSet([
-            DataTable("noaa", "global_stations", with_geo_data, "overwrite"),
+            DataTable("weather", "global_stations", with_geo_data, "overwrite"),
             read_data.get_table("raw_global_stations")
         ])
 
@@ -117,7 +117,7 @@ class StationGroups(SparkTask):
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
-            DataTable("noaa", "global_stations")
+            DataTable("weather", "global_stations")
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
@@ -171,7 +171,7 @@ class StationGroups(SparkTask):
         )
 
         return DataSet([
-            DataTable("noaa", "station_groups", station_groups, "overwrite"),
+            DataTable("weather", "station_groups", station_groups, "overwrite"),
         ])
 
     def _group_stations(self, spark: SparkSession, stations: DataFrame, network_id: str) -> DataFrame:
@@ -229,8 +229,8 @@ class StationGroupsFrontend(SparkTask):
 
     def read(self, spark: SparkSession) -> DataSet:
         tables = [
-            DataTable("noaa", "global_stations"),
-            DataTable("noaa", "station_groups")
+            DataTable("weather", "global_stations"),
+            DataTable("weather", "station_groups")
         ]
         return DataSet(tables)
 

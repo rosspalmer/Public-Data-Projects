@@ -12,7 +12,7 @@ from pdp.data.spark import SharedSpark
 class GlobalSurfaceSummaryOfDay(SharedSpark):
 
     def __init__(self, data_folder_path: str):
-        super().__init__("noaa-gsod")
+        super().__init__("weather-gsod")
         self.data_folder_path = data_folder_path
 
         self.SCHEMA = "gsod"

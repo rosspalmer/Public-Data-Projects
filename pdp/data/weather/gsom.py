@@ -39,7 +39,7 @@ class ParseGlobalSummaryOfMonth(SparkTask):
         df = df.mapInPandas(read_batch, "ghcn_id string, file string, data string")
 
         return DataSet([
-            DataTable("noaa", "pandas_read", df)
+            DataTable("weather", "pandas_read", df)
         ])
 
 
@@ -65,7 +65,7 @@ class ParseGlobalSummaryOfMonth(SparkTask):
             df = df.withColumn(header, F.element_at("data", header))
 
         db = DataSet([
-            DataTable("noaa", "raw_monthly", df, "overwrite")
+            DataTable("weather", "raw_monthly", df, "overwrite")
         ])
 
         return db
@@ -123,7 +123,7 @@ class GSOMByStation(SparkTask):
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
-            DataTable("noaa", "raw_monthly")
+            DataTable("weather", "raw_monthly")
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
@@ -163,7 +163,7 @@ class GSOMByStation(SparkTask):
         measurements = raw.df.select(select_measurements)
 
         transformed = DataSet([
-            DataTable("noaa", "monthly_by_station", measurements, "overwrite"),
+            DataTable("weather", "monthly_by_station", measurements, "overwrite"),
         ])
 
         return transformed
@@ -176,8 +176,8 @@ class GSOMStationGroups(SparkTask):
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
-            DataTable("noaa", "station_groups"),
-            DataTable("noaa", "monthly_by_station"),
+            DataTable("weather", "station_groups"),
+            DataTable("weather", "monthly_by_station"),
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
@@ -214,7 +214,7 @@ class GSOMStationGroups(SparkTask):
         )
 
         return DataSet([
-            DataTable("noaa", "monthly_by_group", group_averages, "overwrite")
+            DataTable("weather", "monthly_by_group", group_averages, "overwrite")
         ])
 
 
@@ -236,7 +236,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
-            DataTable("noaa", self.read_table),
+            DataTable("weather", self.read_table),
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
@@ -279,7 +279,7 @@ class GlobalMonthlyWeatherTrends(SparkTask):
         # TODO add linear regressions to trends
 
         return DataSet([
-            DataTable("noaa", f"{self.read_table}_trends", trends, "overwrite")
+            DataTable("weather", f"{self.read_table}_trends", trends, "overwrite")
         ])
 
 
@@ -291,8 +291,8 @@ class GlobalMonthlyWeatherTrendsFrontend(SparkTask):
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
-            DataTable("noaa", "monthly_by_group"),
-            DataTable("noaa", "monthly_by_group_trends")
+            DataTable("weather", "monthly_by_group"),
+            DataTable("weather", "monthly_by_group_trends")
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
