@@ -191,10 +191,10 @@ class GHCNDTransformedValues(SparkTask):
             long_form_values
             .repartition(200)
             .groupby("ghcn_id", "date")
-            .agg([
+            .agg(
                 get_column(old_name, new_name, multiplier)
                 for old_name, new_name, multiplier in self.MEASUREMENT_COLUMNS
-            ])
+            )
         )
 
         values_table = DataTable("weather", "global_daily", wide_form_values, "overwrite")
