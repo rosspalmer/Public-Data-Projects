@@ -165,3 +165,35 @@ class GHCNDTransformedValues(SparkTask):
         values_table = DataTable("weather", "global_daily", formatted_values, "overwrite")
 
         return DataSet([values_table])
+
+
+class GlobalWeatherBySeason(SparkTask):
+
+    def __init__(self):
+        super().__init__("global-weather-by-season")
+
+        self.SEASON_DOYS = {
+            "spring": (80, 172),
+            "summer": (172, 264),
+            "fall": (264, 315),
+        }
+
+
+
+    def read(self, spark: SparkSession) -> DataSet:
+        return DataSet([DataTable("weather", "global_daily")])
+
+    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
+
+        daily_with_season = (
+            read_data.get_table("global_daily")
+        )
+
+        seasons_doys = spark.createDataFrame(
+            [Row(doy=n, season="winter") for n in range(1, 80)] +
+            [Row(doy=n, season="spring") for n in range(80, 172)] +
+            [Row(doy=n, season="summer") for n in range(172, 264)] +
+            [Row(doy=n, season="fall") for n in range(264, 315)] +
+            [Row(doy=n, season="winter") for n in range(315, 366)]
+        )
+
