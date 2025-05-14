@@ -189,7 +189,8 @@ class GHCNDailyByStation(SparkTask):
 
         wide_form_values = (
             long_form_values
-            .repartition(2000, "ghcn_id", "date")
+            # Use larger number of partitions to avoid spill
+            .repartition(500, "ghcn_id", "date")
             .groupby("ghcn_id", "date")
             .agg(*[
                 get_column(old_name, new_name, multiplier)
