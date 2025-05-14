@@ -14,6 +14,6 @@ with SparkJob("big-homes") as job:
     # gsom_by_station_group = GSOMStationGroups()
     # monthly_weather_trends = GlobalMonthlyWeatherTrends("monthly_by_group")
     # frontend = GlobalMonthlyWeatherTrendsFrontend()
-    daily_parse = GHCNDParseTextFiles("/mnt/lake-fs/raw/gov/weather/ncei/ghcnd/ghcnd_all")
+    daily_parse = GHCNDParseTextFiles("/mnt/lake-fs/raw/gov/noaa/ncei/ghcnd/ghcnd_all")
     daily_transformed = GHCNDTransformedValues()
     seasons = GlobalWeatherBySeason()
