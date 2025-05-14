@@ -14,7 +14,7 @@ class GHCNDParseTextFiles(SparkTask):
 
         raw_text = (
             spark.read
-            .text(f'{self.all_daily_files_path}/*.dly')
+            .text(f'{self.all_daily_files_path}/USW00093822.dly')
             .withColumn("file_name", F.input_file_name())
         )
         raw_table = DataTable("weather", "raw_ghcnd_text", raw_text, "overwrite")
@@ -26,10 +26,10 @@ class GHCNDParseTextFiles(SparkTask):
         TEXT_COL = F.col("value")
 
         ID_COLUMNS = [
-            ("ID", 11),
-            ("YEAR", 4),
-            ("MONTH", 2),
-            ("ELEMENT", 4)
+            ("ghcn_id", 11),
+            ("year", 4),
+            ("month", 2),
+            ("element", 4)
         ]
 
         VALUE_CHARS = 5
@@ -59,10 +59,22 @@ class GHCNDParseTextFiles(SparkTask):
 
         select_observations = [c for day in range(1, 32) for c in daily_observation(day)]
 
-        parsed = raw_text.select(select_ids + select_observations + [F.col("file_name")])
+        parsed = raw_text.select(select_ids + select_observations)
+
+        long_form = (
+            parsed
+            .melt(ids=["ghcn_id", "year", "month", "element"],
+                  variableColumnName="column_name", valueColumnName="value")
+            .withColumn("value", F.when(F.col("value") != -9999, F.col("value")))
+            .withColumn("column_type", F.regexp_extract("column_name", "^([A-Z]+)\\d+$", 1))
+            .withColumn("day", F.regexp_extract("column_name", "^[A-Z]+(\\d+)$", 1))
+            .withColumn("date", F.make_date("year", "month", "day"))
+            .withColumn("filename", F.input_file_name())
+            .drop("year", "month", "day")
+        )
 
         return DataSet([DataTable(
-            "weather", "raw_ghcnd", parsed, "overwrite"
+            "weather", "ghcnd_long", long_form, "overwrite"
         )])
 
 
@@ -77,12 +89,12 @@ class GHCNDTransformedValues(SparkTask):
         ("TMAX", "temperature_max_c", 0.1),
         ("TMIN", "temperature_min_c", 0.1),
         ("TAVG", "temperature_avg_c", 0.1),
-        ("ADPT", "temperature_avg_dew_point_c", 0.1),
-        ("AWBT", "temperature_avg_wet_bulb_c", 0.1),
+        ("ADPT", "temperature_dew_point_avg_c", 0.1),
+        ("AWBT", "temperature_wet_bulb_avg_c", 0.1),
 
         # Pressure measurements
-        ("ASLP", "pressure_sea_level_hpa", 10),
-        ("ASTP", "pressure_station_level_hpa", 10),
+        ("ASLP", "pressure_sea_level_avg_hpa", 10),
+        ("ASTP", "pressure_station_level_avg_hpa", 10),
 
         # Humidity measurements
         ("RHAV", "relative_humidity_avg_pct", 1),
@@ -114,53 +126,48 @@ class GHCNDTransformedValues(SparkTask):
 
     ]
 
-    tenths_columns = {c[0] for c in MEASUREMENT_COLUMNS if c[2] == 0.1}
-
     def __init__(self):
         super().__init__("ghcnd-transformed")
 
     def read(self, spark: SparkSession) -> DataSet:
-        raw = DataTable("weather", "raw_ghcnd")
+        raw = DataTable("weather", "ghcnd_long")
         return DataSet([raw])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
-        raw = read_data.get_table('raw_ghcnd').df
+        ghcnd_long = read_data.get_table('ghcnd_long').df
 
         measurement_lookups = spark.createDataFrame(data=[
-            Row(ELEMENT=x, name=y, multiplier=float(z))
+            Row(element=x, name=y, multiplier=float(z))
             for x,y,z in self.MEASUREMENT_COLUMNS
         ])
 
-        value_cols = [c for c in raw.columns if c.startswith("VALUE")]
-
         long_form_values = (
-            raw.melt(ids=["ID", "YEAR", "MONTH", "ELEMENT"], values=value_cols,
-                     variableColumnName="DAY", valueColumnName="value")
-            .withColumn("DAY", F.regexp_extract("DAY", "VALUE(\\d+)", 1).cast("int"))
-            .withColumn("date", F.make_date("YEAR", "MONTH", "DAY"))
-            .join(measurement_lookups, "ELEMENT", "inner")
-            .withColumn("value", F.when(F.col("value") != -9999, F.col("value")))
-            .withColumn("value", F.col("value") * F.col("multiplier"))
-            .withColumnRenamed("ID", "ghcn_id")
-            .drop("YEAR", "MONTH")
+            ghcnd_long
+            .filter(F.col("column_type") == "VALUE")
+            .join(measurement_lookups, "element", "inner")
+            .withColumn("value", F.col("value").cast("int") * F.col("multiplier"))
         )
 
         pivot_values = (
             long_form_values
             .groupby("ghcn_id", "date")
-            .pivot("ELEMENT")
+            .pivot("element")
             .sum("value")
         )
 
-        select_formatted_values = [
-            F.col(c[0]).cast("decimal(4, 1)").alias(c[1]) if c[0] in self.tenths_columns
-            else F.col(c[0]).cast("int").alias(c[1])
-            for c in self.MEASUREMENT_COLUMNS if c[0] in pivot_values.columns
-        ]
+        def generate_formatted_column(old_name: str, new_name: str, multiplier: float) -> Column:
+            if multiplier < 1:
+                return F.col(old_name).cast("decimal(4, 1)").alias(new_name)
+            else:
+                return F.col(old_name).cast("int").alias(new_name)
 
-        formatted_values = pivot_values \
-            .select([F.col("ghcn_id"), F.col("date")] + select_formatted_values)
+        formatted_values = pivot_values.select(
+            [F.col("ghcn_id"), F.col("date")] + [
+                generate_formatted_column(c[0], c[1], c[2])
+                for c in self.MEASUREMENT_COLUMNS if c[0] in pivot_values.columns
+            ]
+        )
 
         values_table = DataTable("weather", "global_daily", formatted_values, "overwrite")
 
@@ -172,22 +179,10 @@ class GlobalWeatherBySeason(SparkTask):
     def __init__(self):
         super().__init__("global-weather-by-season")
 
-        self.SEASON_DOYS = {
-            "spring": (80, 172),
-            "summer": (172, 264),
-            "fall": (264, 315),
-        }
-
-
-
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([DataTable("weather", "global_daily")])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
-
-        daily_with_season = (
-            read_data.get_table("global_daily")
-        )
 
         seasons_doys = spark.createDataFrame(
             [Row(doy=n, season="winter") for n in range(1, 80)] +
@@ -197,3 +192,28 @@ class GlobalWeatherBySeason(SparkTask):
             [Row(doy=n, season="winter") for n in range(315, 366)]
         )
 
+        daily_with_season = (
+            read_data.get_table("global_daily").df
+            .withColumn("doy", F.dayofyear("date"))
+            .join(seasons_doys, "doy", "inner")
+            .drop("doy")
+        )
+
+        global_season = (
+            daily_with_season
+            .withColumn("year", F.date_part(F.lit("year"), "date"))
+            .groupby("ghcn_id", "year", "season")
+            .agg(
+                F.min("temperature_min_c").alias("temperature_absolute_min_c"),
+                F.avg("temperature_min_c").alias("temperature_daily_min_avg_c"),
+                F.avg("temperature_avg_c").alias("temperature_daily_avg_c"),
+                F.avg("temperature_max_c").alias("temperature_daily_max_avg_c"),
+                F.max("temperature_max_c").alias("temperature_absolute_max_c"),
+                F.avg("temperature_dew_point_avg_c").alias("temperature_daily_dew_point_avg_c"),
+                F.avg("temperature_wet_bulb_avg_c").alias("temperature_daily_wet_bulb_avg_c")
+            )
+        )
+
+        global_season_table = DataTable("weather", "global_season", global_season, "overwrite")
+
+        return DataSet([global_season_table])
