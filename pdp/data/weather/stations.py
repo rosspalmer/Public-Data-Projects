@@ -82,7 +82,7 @@ class SurfaceWeatherStation(SparkTask):
         raw_station_parsed = parse_fixed_width(
             read_data.get_table("raw_station").df,
             self.STATION_COLUMNS
-        )
+        ).persist()
 
         print("STATION PARSED")
         raw_station_parsed.show()
@@ -90,7 +90,7 @@ class SurfaceWeatherStation(SparkTask):
         raw_station_history_parsed = parse_fixed_width(
             read_data.get_table("raw_station_history").df,
             self.STATION_HISTORY_COLUMNS
-        )
+        ).persist()
 
         print("STATION HISTORY PARSED")
         raw_station_history_parsed.show()
@@ -111,6 +111,8 @@ class SurfaceWeatherStation(SparkTask):
             .withColumn("network_name", network_name_udf(F.col("network_id")))
             .withColumn("wban_id", F.when(F.col("network_id") == "W", F.right("ghcn_id", F.lit(5))))
         )
+
+        parsed_and_enriched.show()
 
         # Build station and coordinate lists for reverse_geocode lookup below
         station_coords_data = [
