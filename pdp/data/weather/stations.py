@@ -37,6 +37,7 @@ class SurfaceWeatherStation(SparkTask):
         ("longitude", 10, "float"),
         ("elevation", 7, "float"),
         ("state", 3, "string"),
+        ("name", 31, "string"),
         ("gsn_flag", 4, "string"),
         ("hcn_crn_flag", 4, "string"),
         ("wmo_id", 6, "string")
