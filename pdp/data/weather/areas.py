@@ -33,7 +33,7 @@ class WeatherAreas(SparkTask):
 
         area_assignments = None
         for n in network_types:
-            network_area_assignments = self._area_stations(spark, stations, n)
+            network_area_assignments = self._group_stations(spark, stations, n)
             if area_assignments is not None:
                 area_assignments = area_assignments.unionByName(network_area_assignments)
             else:
@@ -119,6 +119,7 @@ class WeatherAreas(SparkTask):
         )
 
         return station_network_areas
+
 
 class WeatherAreasFrontend(SparkTask):
 
