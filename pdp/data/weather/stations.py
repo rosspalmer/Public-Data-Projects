@@ -143,39 +143,3 @@ class SurfaceWeatherStation(SparkTask):
             DataTable("weather", "station", parsed_and_enriched, "overwrite"),
             DataTable("weather", "station_history", raw_station_history_parsed, "overwrite")
         ])
-
-
-class StationGroupsFrontend(SparkTask):
-
-    def __init__(self):
-        super().__init__("station-groups-frontend")
-
-    def read(self, spark: SparkSession) -> DataSet:
-        tables = [
-            DataTable("weather", "global_stations"),
-            DataTable("weather", "station_groups")
-        ]
-        return DataSet(tables)
-
-    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
-
-        stations = read_data.get_table("global_stations").df
-        groups = read_data.get_table("station_groups").df
-
-        group_stations = groups.select(
-            "group_id",
-            F.explode("station_ids").alias("ghcn_id")
-        )
-
-        groups = groups.select("group_id", "network_id", "center_lat", "center_long")
-
-        write_data = [
-            DataTable("weather", "stations", stations, "overwrite"),
-            DataTable("weather", "station_groups", groups, "overwrite"),
-            DataTable("weather", "group_stations", group_stations, "overwrite"),
-        ]
-
-        return DataSet(write_data)
-
-    def write(self, write_dataset: DataSet):
-        write_dataset.write_all_jdbc()

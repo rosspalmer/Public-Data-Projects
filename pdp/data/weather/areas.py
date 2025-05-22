@@ -21,12 +21,12 @@ class WeatherAreas(SparkTask):
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
-            DataTable("weather", "stations")
+            DataTable("weather", "station")
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
-        stations = read_data.get_table("stations").df.persist()
+        stations = read_data.get_table("station").df.persist()
 
         # network_types = [n for n in SurfaceWeatherStations.NETWORK_ID_NAMES.keys()]
         network_types = ["W"]
@@ -119,3 +119,38 @@ class WeatherAreas(SparkTask):
         )
 
         return station_network_areas
+
+class WeatherAreasFrontend(SparkTask):
+
+    def __init__(self):
+        super().__init__("station-groups-frontend")
+
+    def read(self, spark: SparkSession) -> DataSet:
+        tables = [
+            DataTable("weather", "station"),
+            DataTable("weather", "area")
+        ]
+        return DataSet(tables)
+
+    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
+
+        stations = read_data.get_table("station").df
+        areas = read_data.get_table("area").df
+
+        area_stations = areas.select(
+            "area_id",
+            F.explode("station_ids").alias("station_id")
+        )
+
+        areas = areas.select("area_id", "network_id", "center_lat", "center_long")
+
+        write_data = [
+            DataTable("weather", "station", stations, "overwrite"),
+            DataTable("weather", "area", areas, "overwrite"),
+            DataTable("weather", "area_stations", area_stations, "overwrite"),
+        ]
+
+        return DataSet(write_data)
+
+    def write(self, write_dataset: DataSet):
+        write_dataset.write_all_jdbc()
