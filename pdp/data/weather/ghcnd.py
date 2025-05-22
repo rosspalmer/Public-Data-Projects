@@ -203,19 +203,3 @@ class GHCNDailyByStation(SparkTask):
         values_table = DataTable("weather", "daily_station", wide_form_values, "overwrite")
 
         return DataSet([values_table])
-
-
-class GHCNDailyAreaAverages(SparkTask):
-
-    def __init__(self):
-        super().__init__("ghcnd-daily-by-station")
-
-    def read(self, spark: SparkSession) -> DataSet:
-        tables = [
-            DataTable("weather", "daily_station"),
-            DataTable("weather", "areas")
-        ]
-
-    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
-        pass
-
