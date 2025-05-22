@@ -31,14 +31,14 @@ class WeatherAreas(SparkTask):
         # network_types = [n for n in SurfaceWeatherStations.NETWORK_ID_NAMES.keys()]
         network_types = ["W"]
 
-        group_assignments = None
+        area_assignments = None
         for n in network_types:
-            network_group_assignments = self._group_stations(spark, stations, n)
-            if group_assignments is not None:
-                group_assignments = group_assignments.unionByName(network_group_assignments)
+            network_area_assignments = self._area_stations(spark, stations, n)
+            if area_assignments is not None:
+                area_assignments = area_assignments.unionByName(network_area_assignments)
             else:
-                group_assignments = network_group_assignments
-        group_assignments = group_assignments.persist()
+                area_assignments = network_area_assignments
+        area_assignments = area_assignments.persist()
 
         def calculate_area_center(keys: Any, group: pd.DataFrame) -> pd.DataFrame:
             coord_list = list(zip(group["latitude"].tolist(), group["longitude"].tolist()))
@@ -52,8 +52,8 @@ class WeatherAreas(SparkTask):
             })
             return df
 
-        group_centers = (
-            group_assignments
+        area_centers = (
+            area_assignments
             .select("area_id", F.explode("station_ids").alias("station_id"))
             .join(stations.select("station_id", "latitude", "longitude"), "station_id")
             .groupby("area_id")
@@ -63,14 +63,14 @@ class WeatherAreas(SparkTask):
             )
         ).persist()
 
-        station_groups = (
-            group_assignments
+        areas = (
+            area_assignments
             .withColumn("stations_count", F.size("station_ids"))
-            .join(group_centers, "area_id", "left")
+            .join(area_centers, "area_id", "left")
         )
 
         return DataSet([
-            DataTable("weather", "area", station_groups, "overwrite"),
+            DataTable("weather", "area", areas, "overwrite"),
         ])
 
     def _group_stations(self, spark: SparkSession, stations: DataFrame, network_id: str) -> DataFrame:
@@ -95,7 +95,7 @@ class WeatherAreas(SparkTask):
             metric='haversine'
         )
 
-        numpy_coords = station_coords[['lat', 'long']].to_numpy()
+        numpy_coords = station_coords[['latitude', 'longitude']].to_numpy()
         area_assignments = db.fit_predict(np.radians(numpy_coords))
 
         group_labels = db.labels_

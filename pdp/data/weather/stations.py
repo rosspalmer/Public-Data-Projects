@@ -23,7 +23,7 @@ class SurfaceWeatherStation(SparkTask):
     }
 
     STATION_COLUMNS = [
-        ("ghcn_id", 11, "string"),
+        ("station_id", 11, "string"),
         ("latitude", 9, "float"),
         ("longitude", 10, "float"),
         ("elevation", 7, "float"),
@@ -35,7 +35,7 @@ class SurfaceWeatherStation(SparkTask):
     ]
 
     STATION_HISTORY_COLUMNS = [
-        ("ghcn_id", 11, "string"),
+        ("station_id", 11, "string"),
         ("latitude", 9, "float"),
         ("longitude", 10, "float"),
         ("element", 5, "string"),
@@ -91,10 +91,10 @@ class SurfaceWeatherStation(SparkTask):
                 for name, width, data_type in self.STATION_COLUMNS
                 if data_type == "string"
             })
-            .withColumn("country_code", F.left("ghcn_id", F.lit(2)))
-            .withColumn("network_id", F.substring("ghcn_id", 3, 1))
+            .withColumn("country_code", F.left("station_id", F.lit(2)))
+            .withColumn("network_id", F.substring("station_id", 3, 1))
             .withColumn("network_name", network_name_udf(F.col("network_id")))
-            .withColumn("wban_id", F.when(F.col("network_id") == "W", F.right("ghcn_id", F.lit(5))))
+            .withColumn("wban_id", F.when(F.col("network_id") == "W", F.right("station_id", F.lit(5))))
         )
 
         #
