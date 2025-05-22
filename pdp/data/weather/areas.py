@@ -12,7 +12,6 @@ from sklearn.cluster import DBSCAN
 
 from pdp.data.data import DataSet, DataTable
 from pdp.data.job import SparkTask
-from pdp.data.weather.stations import SurfaceWeatherStations
 
 
 class WeatherAreas(SparkTask):
@@ -29,7 +28,8 @@ class WeatherAreas(SparkTask):
 
         stations = read_data.get_table("global_stations").df.persist()
 
-        network_types = [n for n in SurfaceWeatherStations.NETWORK_ID_NAMES.keys()]
+        # network_types = [n for n in SurfaceWeatherStations.NETWORK_ID_NAMES.keys()]
+        network_types = ["W"]
 
         group_assignments = None
         for n in network_types:
@@ -70,7 +70,7 @@ class WeatherAreas(SparkTask):
         )
 
         return DataSet([
-            DataTable("weather", "station_groups", station_groups, "overwrite"),
+            DataTable("weather", "area", station_groups, "overwrite"),
         ])
 
     def _group_stations(self, spark: SparkSession, stations: DataFrame, network_id: str) -> DataFrame:
