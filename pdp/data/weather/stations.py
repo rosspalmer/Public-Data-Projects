@@ -110,53 +110,53 @@ class SurfaceWeatherStation(SparkTask):
             .withColumn("network_id", F.substring("ghcn_id", 3, 1))
             .withColumn("network_name", network_name_udf(F.col("network_id")))
             .withColumn("wban_id", F.when(F.col("network_id") == "W", F.right("ghcn_id", F.lit(5))))
-        )
-
-        parsed_and_enriched.show()
-
-        # Build station and coordinate lists for reverse_geocode lookup below
-        station_coords_data = [
-            (r.ghcn_id, (r.lat, r.long))
-            for r in raw_station_parsed.select("ghcn_id", "latitude", "longitude").collect()
-        ]
-        station_ids = [x[0] for x in station_coords_data]
-        coords = [x[1] for x in station_coords_data]
-
-        # Create DataFrame using reverse_geocode 'search'
-        # on station coordinates (`data` map<string, string> column)
-        lookups = zip(station_ids, reverse_geocode.search(coords))
-        lookup_df = spark.createDataFrame(
-            data=lookups,
-            schema="ghcn_id string, data map<string, string>"
         ).persist()
 
-        # Create list of unique key names from `data` map for use below
-        data_keys = [r.data_key for r in (
-            lookup_df.select(
-                F.explode(
-                    F.map_keys("data")
-                ).alias("data_key"))
-            .distinct()
-            .collect()
-        ) if r.data_key not in ['country_code']]
-
-        for k in data_keys:
-            lookup_df = lookup_df.withColumn(k, F.element_at("data", k))
-
-        lookup_df = (
-            lookup_df
-            .drop("data")
-            .withColumnsRenamed({"latitude": "city_lat", "longitude": "city_long"})
-        )
-
-        station_with_geo_data = (
-            parsed_and_enriched
-            .drop("state")
-            .join(lookup_df, "ghcn_id", "left")
-        )
+        parsed_and_enriched.show()
+        #
+        # # Build station and coordinate lists for reverse_geocode lookup below
+        # station_coords_data = [
+        #     (r.ghcn_id, (r.lat, r.long))
+        #     for r in raw_station_parsed.select("ghcn_id", "latitude", "longitude").collect()
+        # ]
+        # station_ids = [x[0] for x in station_coords_data]
+        # coords = [x[1] for x in station_coords_data]
+        #
+        # # Create DataFrame using reverse_geocode 'search'
+        # # on station coordinates (`data` map<string, string> column)
+        # lookups = zip(station_ids, reverse_geocode.search(coords))
+        # lookup_df = spark.createDataFrame(
+        #     data=lookups,
+        #     schema="ghcn_id string, data map<string, string>"
+        # ).persist()
+        #
+        # # Create list of unique key names from `data` map for use below
+        # data_keys = [r.data_key for r in (
+        #     lookup_df.select(
+        #         F.explode(
+        #             F.map_keys("data")
+        #         ).alias("data_key"))
+        #     .distinct()
+        #     .collect()
+        # ) if r.data_key not in ['country_code']]
+        #
+        # for k in data_keys:
+        #     lookup_df = lookup_df.withColumn(k, F.element_at("data", k))
+        #
+        # lookup_df = (
+        #     lookup_df
+        #     .drop("data")
+        #     .withColumnsRenamed({"latitude": "city_lat", "longitude": "city_long"})
+        # )
+        #
+        # station_with_geo_data = (
+        #     parsed_and_enriched
+        #     .drop("state")
+        #     .join(lookup_df, "ghcn_id", "left")
+        # )
 
         return DataSet([
-            DataTable("weather", "station", station_with_geo_data, "overwrite"),
+            DataTable("weather", "station", parsed_and_enriched, "overwrite"),
             DataTable("weather", "station_history", raw_station_history_parsed, "overwrite")
         ])
 
