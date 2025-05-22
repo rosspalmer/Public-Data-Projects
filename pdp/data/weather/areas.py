@@ -21,12 +21,12 @@ class WeatherAreas(SparkTask):
 
     def read(self, spark: SparkSession) -> DataSet:
         return DataSet([
-            DataTable("weather", "global_stations")
+            DataTable("weather", "stations")
         ])
 
     def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
 
-        stations = read_data.get_table("global_stations").df.persist()
+        stations = read_data.get_table("stations").df.persist()
 
         # network_types = [n for n in SurfaceWeatherStations.NETWORK_ID_NAMES.keys()]
         network_types = ["W"]
@@ -40,13 +40,13 @@ class WeatherAreas(SparkTask):
                 group_assignments = network_group_assignments
         group_assignments = group_assignments.persist()
 
-        def calculate_group_center(keys: Any, group: pd.DataFrame) -> pd.DataFrame:
-            coord_list = list(zip(group["lat"].tolist(), group["long"].tolist()))
+        def calculate_area_center(keys: Any, group: pd.DataFrame) -> pd.DataFrame:
+            coord_list = list(zip(group["latitude"].tolist(), group["longitude"].tolist()))
             mp = MultiPoint(coord_list)
             centroid = (mp.centroid.x, mp.centroid.y)
             centermost_point = min(coord_list, key=lambda point: great_circle(point, centroid).m)
             df = pd.DataFrame({
-                "group_id": keys[0],
+                "area_id": keys[0],
                 "center_lat": [centermost_point[0]],
                 "center_long": [centermost_point[1]]
             })
@@ -54,19 +54,19 @@ class WeatherAreas(SparkTask):
 
         group_centers = (
             group_assignments
-            .select("group_id", F.explode("station_ids").alias("ghcn_id"))
-            .join(stations.select("ghcn_id", "lat", "long"), "ghcn_id")
-            .groupby("group_id")
+            .select("area_id", F.explode("station_ids").alias("station_id"))
+            .join(stations.select("station_id", "latitude", "longitude"), "station_id")
+            .groupby("area_id")
             .applyInPandas(
-                calculate_group_center,
-                "group_id string, center_lat float, center_long float"
+                calculate_area_center,
+                "area_id string, center_lat float, center_long float"
             )
         ).persist()
 
         station_groups = (
             group_assignments
             .withColumn("stations_count", F.size("station_ids"))
-            .join(group_centers, "group_id", "left")
+            .join(group_centers, "area_id", "left")
         )
 
         return DataSet([
@@ -78,7 +78,7 @@ class WeatherAreas(SparkTask):
         station_coords: pd.DataFrame = (
             stations
             .filter(F.col("network_id") == network_id)
-            .select("ghcn_id", "lat", "long")
+            .select("station_id", "latitude", "longitude")
             .toPandas()
         )
 
@@ -96,26 +96,26 @@ class WeatherAreas(SparkTask):
         )
 
         numpy_coords = station_coords[['lat', 'long']].to_numpy()
-        group_assignments = db.fit_predict(np.radians(numpy_coords))
+        area_assignments = db.fit_predict(np.radians(numpy_coords))
 
         group_labels = db.labels_
-        num_groups = len(set(group_labels))
+        num_areas = len(set(group_labels))
 
         print(f'Fit for {network_id} network')
         print(f'Number of stations: {len(station_coords)}')
-        print(f'Number of groups: {num_groups}')
+        print(f'Number of areas: {num_areas}')
 
-        station_coords['group_id'] = group_assignments
+        station_coords['area_id'] = area_assignments
 
-        station_network_groups = (
-            spark.createDataFrame(station_coords[['group_id', 'ghcn_id']])
-            .join(stations, "ghcn_id")
-            .groupby("group_id")
+        station_network_areas = (
+            spark.createDataFrame(station_coords[['area_id', 'station_id']])
+            .join(stations, "station_id")
+            .groupby("area_id")
             .agg(
-                F.collect_set("ghcn_id").alias("station_ids")
+                F.collect_set("station_id").alias("station_ids")
             )
-            .withColumn("group_id", F.concat(F.lit(f"{network_id}-"), F.col("group_id")))
+            .withColumn("area_id", F.concat(F.lit(f"{network_id}-"), F.col("area_id")))
             .withColumn("network_id", F.lit(network_id))
         )
 
-        return station_network_groups
+        return station_network_areas

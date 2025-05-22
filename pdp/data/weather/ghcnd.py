@@ -189,15 +189,33 @@ class GHCNDailyByStation(SparkTask):
 
         wide_form_values = (
             long_form_values
+            # Rename to ghcn_id to standard 'station_id'
+            .withColumnRenamed("ghcn_id", "station_id")
             # Use larger number of partitions to avoid spill
-            .repartition(500, "ghcn_id", "date")
-            .groupby("ghcn_id", "date")
+            .repartition(500, "station_id", "date")
+            .groupby("station_id", "date")
             .agg(*[
                 get_column(old_name, new_name, multiplier)
                 for old_name, new_name, multiplier in self.MEASUREMENT_COLUMNS
             ])
         )
 
-        values_table = DataTable("weather", "global_daily_station", wide_form_values, "overwrite")
+        values_table = DataTable("weather", "daily_station", wide_form_values, "overwrite")
 
         return DataSet([values_table])
+
+
+class GHCNDailyAreaAverages(SparkTask):
+
+    def __init__(self):
+        super().__init__("ghcnd-daily-by-station")
+
+    def read(self, spark: SparkSession) -> DataSet:
+        tables = [
+            DataTable("weather", "daily_station"),
+            DataTable("weather", "areas")
+        ]
+
+    def transform(self, spark: SparkSession, read_data: DataSet) -> DataSet:
+        pass
+
