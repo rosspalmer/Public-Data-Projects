@@ -1,16 +1,7 @@
-from typing import Any
 
-import pandas as pd
-import numpy as np
-from sklearn.cluster import DBSCAN
-from geopy.distance import great_circle
-from shapely.geometry import MultiPoint
-
-from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
-from pyspark.sql.types import StringType, StructType
-import reverse_geocode
-
+from pyspark.sql.types import StringType
 
 from pdp.data.data import DataSet, DataTable
 from pdp.data.job import SparkTask
@@ -84,17 +75,10 @@ class SurfaceWeatherStation(SparkTask):
             self.STATION_COLUMNS
         ).persist()
 
-        print("STATION PARSED")
-        raw_station_parsed.show()
-        raw_station_parsed.show()
-
         raw_station_history_parsed = parse_fixed_width(
             read_data.get_table("raw_station_history").df,
             self.STATION_HISTORY_COLUMNS
         ).persist()
-
-        print("STATION HISTORY PARSED")
-        raw_station_history_parsed.show()
 
         network_name_map = {k: v for k, v in self.NETWORK_ID_NAMES.items()}
         network_name_udf = F.udf(lambda x: network_name_map.get(x), StringType())
