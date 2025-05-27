@@ -85,8 +85,8 @@ class WeatherSeasonByArea(SparkTask):
 
         season_by_area = (
             season_by_station
-            .join(area_stations, "area_id", "inner")
-            .groupby("area", "season", "year")
+            .join(area_stations, "station_id", "inner")
+            .groupby("area_id", "season", "year")
             .agg([
                 F.struct(
                     F.avg(c).alias("avg"),
