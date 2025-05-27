@@ -200,6 +200,6 @@ class GHCNDailyByStation(SparkTask):
             ])
         )
 
-        values_table = DataTable("weather", "daily_station", wide_form_values, "overwrite")
+        values_table = DataTable("weather", "daily_by_station", wide_form_values, "overwrite")
 
         return DataSet([values_table])
