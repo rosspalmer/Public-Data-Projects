@@ -128,7 +128,8 @@ class WeatherSeasonTrends(SparkTask):
         )
 
         station_range: DataFrame = measurements.select(f"{self.by_type}_id").distinct()
-        years_range: DataFrame = spark.createDataFrame(data=[Row(year=y) for y in range(1900, 2024)])
+        years_range: DataFrame = spark.createDataFrame(
+            data=[Row(year=y) for y in range(self.START_YEAR, self.END_YEAR)])
         months_range: DataFrame = spark.createDataFrame(data=[Row(month=m) for m in range(1, 13)])
         full_data_range: DataFrame = station_range.crossJoin(years_range).crossJoin(months_range)
 
@@ -145,7 +146,8 @@ class WeatherSeasonTrends(SparkTask):
 
         def generate_trend_column(measurement: str, rolling_n: int) -> Column:
             n_window = trend_windows[rolling_n]
-            is_enough_measurements: Column = F.count(measurement).over(n_window) >= F.lit(rolling_n - self.MISSING_N_ALLOWED)
+            is_enough_measurements: Column = \
+                F.count(measurement).over(n_window) >= F.lit(rolling_n - self.MISSING_N_ALLOWED)
             rolling_avg_column: Column = F.avg(measurement).over(n_window).cast("decimal(16,3)")
             rolling_avg_if_enough_measurements: Column = F.when(is_enough_measurements, rolling_avg_column)
             return rolling_avg_if_enough_measurements.alias(f"{c}_avg{n}")

@@ -14,4 +14,5 @@ with SparkJob("weather") as job:
     daily_transformed = GHCNDailyByStation()
     season_station = WeatherSeasonByStation()
     season_area = WeatherSeasonByArea()
-    season_trends = WeatherSeasonTrends("area")
+    season_station_trends = WeatherSeasonTrends("station")
+    season_area_trends = WeatherSeasonTrends("area")
