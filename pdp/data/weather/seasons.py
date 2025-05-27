@@ -130,8 +130,9 @@ class WeatherSeasonTrends(SparkTask):
         station_range: DataFrame = measurements.select(f"{self.by_type}_id").distinct()
         years_range: DataFrame = spark.createDataFrame(
             data=[Row(year=y) for y in range(self.START_YEAR, self.END_YEAR)])
-        months_range: DataFrame = spark.createDataFrame(data=[Row(month=m) for m in range(1, 13)])
-        full_data_range: DataFrame = station_range.crossJoin(years_range).crossJoin(months_range)
+        seasons_range: DataFrame = spark.createDataFrame(
+            data=[Row(season=s) for s in ["spring", "summer", "fall", "winter"]])
+        full_data_range: DataFrame = station_range.crossJoin(years_range).crossJoin(seasons_range)
 
         measurement_column_names = [
             v[0] for v in GSOMByStation.MEASUREMENT_COLUMNS.values()

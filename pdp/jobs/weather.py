@@ -13,6 +13,6 @@ with SparkJob("weather") as job:
     # daily_parse = GHCNDParseTextFiles("/mnt/lake-fs/raw/gov/noaa/ncei/ghcnd/ghcnd_all")
     # daily_transformed = GHCNDailyByStation()
     # season_station = WeatherSeasonByStation()
-    season_area = WeatherSeasonByArea()
+    # season_area = WeatherSeasonByArea()
     season_station_trends = WeatherSeasonTrends("station")
     season_area_trends = WeatherSeasonTrends("area")
