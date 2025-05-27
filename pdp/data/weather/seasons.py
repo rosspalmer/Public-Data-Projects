@@ -79,7 +79,7 @@ class WeatherSeasonByArea(SparkTask):
         )
 
         measurement_names = [
-            name for name in season_by_station.columns.tolist()
+            name for name in season_by_station.columns
             if name not in ["station_id", "season", "year"]
         ]
 
