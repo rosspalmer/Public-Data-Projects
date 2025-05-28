@@ -9,6 +9,7 @@ class DataTable:
     name: str
     df: DataFrame = None
     mode: str = 'none'
+    format: str = 'delta'
 
     @property
     def full_table_name(self) -> str:
@@ -26,7 +27,13 @@ class DataTable:
         if self.mode == 'none':
             raise Exception('Mode must be defined to write table')
 
-        self.df.write.mode(self.mode).saveAsTable(self.full_table_name)
+        (
+            self.df
+            .write
+            .format(self.format)
+            .mode(self.mode)
+            .saveAsTable(self.full_table_name)
+        )
 
 
 class DataSet:
