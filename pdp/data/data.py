@@ -30,7 +30,7 @@ class DataTable:
         (
             self.df
             .write
-            .format(self.format)
+            # .format(self.format)
             .mode(self.mode)
             .saveAsTable(self.full_table_name)
         )
