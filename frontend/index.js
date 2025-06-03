@@ -1,46 +1,68 @@
-// GLOBAL VARIABLES AND TEST DATA 
+// GLOBAL VARIABLES AND TEST DATA
 let lat;
 let lng;
+let map;
+let stationMarkers = [];
+let stationMap;
+let markersLayer;
 
-const exampleStations = {
-  stations: [
-    {
-      ghcn_id: "USC00051528",
-      lat: 39.2203,
-      long: -105.2783,
-      distance_mil: 0.23,
-      elevation_m: 2095,
-      name: "CHEESMAN",
-      city: "Bailey",
-      county: "Park County",
-      state: "Colorado",
-    },
-    {
-      ghcn_id: "USC00053005",
-      lat: 40.5764,
-      long: -105.0858,
-      distance_mil: 120.0,
-      elevation_m: 1525,
-      name: "FT COLLINS",
-      city: "Fort Collins",
-      county: "Park County",
-      state: "Colorado",
-    },
-    {
-      ghcn_id: "USC00051528",
-      lat: 37.1997,
-      long: -108.4892,
-      distance_mil: 230.0,
-      elevation_m: 2176,
-      name: "MESA VERDE NP",
-      city: "Cortez",
-      county: "Park County",
-      state: "Colorado",
-    },
-  ],
-};
+const stations = [
+  {
+    ghcn_id: "USC00051528",
+    lat: 39.2203,
+    long: -105.2783,
+    distance_mil: 0.23,
+    elevation_m: 2095,
+    name: "CHEESMAN",
+    city: "Bailey",
+    county: "Park County",
+    state: "Colorado",
+  },
+  {
+    ghcn_id: "USC00053005",
+    lat: 40.5764,
+    long: -105.0858,
+    distance_mil: 120.0,
+    elevation_m: 1525,
+    name: "FT COLLINS",
+    city: "Fort Collins",
+    county: "Park County",
+    state: "Colorado",
+  },
+  {
+    ghcn_id: "USC00051528",
+    lat: 37.1997,
+    long: -108.4892,
+    distance_mil: 230.0,
+    elevation_m: 2176,
+    name: "MESA VERDE NP",
+    city: "Cortez",
+    county: "Park County",
+    state: "Colorado",
+  },
+];
+
+function initMap() {
+  // Initialize map once
+  if (!map) {
+    map = L.map("map").setView([39, -105], 6);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+      maxZoom: 19,
+    }).addTo(map);
+    // Layer for markers
+    markersLayer = L.layerGroup().addTo(map);
+  }
+}
 
 function displayMap() {
+  if (!map) {
+    map = L.map("stationMap").setView([37.7749, -122.4194], 5);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+    }).addTo(map);
+  }
+
   var map = L.map("map").setView([37.7749, -122.4194], 5); // Default view centered on US
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
@@ -103,65 +125,51 @@ function convertZipCode() {
   });
 }
 
-function getStationData() {
-  convertZipCode()
-  .then(({ lat, lng }) => {
-    console.log(lat, lng);
+function loadStations() {
+  // Populate list
+  const listDiv = document.getElementById("list");
+  listDiv.innerHTML = ""; // clear existing
+  initMap(); // ensure map initialized
 
-    // Show popup
-    const popup = document.getElementById("stationsPopup");
-    popup.style.display = "flex";
+  // Clear markers
+  markersLayer.clearLayers();
 
-    // Clear old content
-    const cardContainer = document.getElementById("stationCards");
-    cardContainer.innerHTML = "";
+  const createP = (label, value) => {
+    const p = document.createElement("p");
+    p.innerHTML = `<strong>${label}:</strong> ${value}`;
+    return p;
+  };
 
-    // Build station cards
-    exampleStations.stations.forEach((station) => {
-      const card = document.createElement("div");
-      card.className = "station-card";
+  // Add stations to list and map
+  stations.forEach((station) => {
+    // Add card to list
+    const card = document.createElement("div");
+    card.className = "station-card";
+    card.innerHTML = `<strong>${station.name}</strong><br>
+                      ${station.city}, ${station.state}`;
+    card.appendChild(createP("Location", `${station.city}, ${station.state}`));
+    card.appendChild(createP("County", station.county));
+    card.appendChild(createP("Elevation", `${station.elevation_m} m`));
+    card.appendChild(createP("Coordinates", `${station.lat}, ${station.long}`));
+    card.appendChild(createP("Station ID", station.ghcn_id));
+    listDiv.appendChild(card);
 
-      const title = document.createElement("div");
-      title.className = "station-title";
-
-      const nameSpan = document.createElement("span");
-      nameSpan.textContent = station.name;
-
-      const distSpan = document.createElement("span");
-      distSpan.textContent = `${station.distance_mil.toFixed(1)} mi`;
-
-      title.appendChild(nameSpan);
-      title.appendChild(distSpan);
-      card.appendChild(title);
-
-      const details = document.createElement("div");
-      details.className = "station-details";
-
-      const createP = (label, value) => {
-        const p = document.createElement("p");
-        p.innerHTML = `<strong>${label}:</strong> ${value}`;
-        return p;
-      };
-
-      // Example data, some of this (distance) will probably need to be calculated differently 
-      details.appendChild(createP("Location", `${station.city}, ${station.state}`));
-      details.appendChild(createP("County", station.county));
-      details.appendChild(createP("Elevation", `${station.elevation_m} m`));
-      details.appendChild(createP("Coordinates", `${station.lat}, ${station.long}`));
-      details.appendChild(createP("Station ID", station.ghcn_id));
-
-      card.appendChild(details);
-      cardContainer.appendChild(card);
-
-      // Then we will be able to click on a specific station and pull up the map??
-    });
-  })
-  .catch((err) => {
-    console.error(err);
+    // Add marker to map
+    const marker = L.marker([station.lat, station.long])
+      .addTo(markersLayer)
+      .bindPopup(
+        `<strong>${station.name}</strong><br>${station.city}, ${station.state}`
+      );
+    // Optional: open popup on hover or click
   });
+
+  // Fit map bounds
+  const bounds = L.latLngBounds(stations.map((s) => [s.lat, s.long]));
+  if (stations.length > 0) {
+    map.fitBounds(bounds);
+  }
 }
 
-// Close button
-function closePopup(){
+function closePopup() {
   document.getElementById("stationsPopup").style.display = "none";
 }

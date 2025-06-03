@@ -1,62 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Data Dashboard</title>
-    <link rel="stylesheet" href="styles.css" />
-    <script src="index.js"></script>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Station Map and List</title>
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+  #container {
+    display: flex;
+    height: 100vh;
+  }
+  #list {
+    width: 40%;
+    overflow-y: auto;
+    padding: 10px;
+    box-sizing: border-box;
+    background: #f0f0f0;
+  }
+  #map {
+    width: 60%;
+    height: 100%;
+  }
+  /* Optional: styles for station cards */
+  .station-card {
+    background: #fff;
+    padding: 8px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+<h1 style="text-align:center;">Stations Map & List</h1>
+<button style="margin:10px;" onclick="loadStations()">Show Stations</button>
+<div id="container">
+  <div id="list"></div>
+  <div id="map"></div>
+</div>
 
-    <!-- External Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Chart.js Testing -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <!-- Leaflet.js Testing -->
-  </head>
-  <body>
-    <header>
-      <h1>Data Dashboard</h1>
-    </header>
+<!-- Scripts and Frameworks -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="index.js"></script>
 
-    <main>
-      <div id="data-container">
-        <!-- Data fields -->
-      </div>
-
-      <div id="charts-container">
-        <canvas id="tempChart"></canvas>
-        <!-- Additional charts can be added here -->
-      </div>
-
-      <!-- saving for now... will probably need a map container at some point, but working on popup at the moment -->
-      <!-- <div id="map-container" style="height: 400px;"> -->
-      <!-- Map Container -->
-      <!-- <h1>Enter Zip Code to View Map</h1>
-        <input type="text" id="zipInput" placeholder="Enter Zip Code">
-        <button id="showStationsButton" onclick="getStationData()">Show Stations</button>
-        <div id="map"></div>
-      </div> -->
-
-      <div id="station-container" style="height: 400px">
-        <!-- Stations Info Container -->
-        <h3>Enter Zip Code to View Stations Near You</h3>
-        <input type="text" id="zipInput" placeholder="Enter Zip Code" />
-        <button id="showStationsButton" onclick="getStationData()">
-          Show Stations
-        </button>
-
-        <!-- Popup/Modal Wrapper -->
-        <div id="stationsPopup" class="popup-container" style="display: none">
-          <div class="popup-inner">
-            <div class="popup-header">
-              <span>Nearby Weather Stations</span>
-              <button id="closePopupBtn" onclick="closePopup()">&times;</button>
-            </div>
-            <div id="stationCards"></div>
-          </div>
-        </div>
-      </div>
-    </main>
-  </body>
+</body>
 </html>
