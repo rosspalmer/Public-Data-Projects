@@ -1,52 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Station Map and List</title>
-<!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<style>
-  body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-  }
-  #container {
-    display: flex;
-    height: 100vh;
-  }
-  #list {
-    width: 40%;
-    overflow-y: auto;
-    padding: 10px;
-    box-sizing: border-box;
-    background: #f0f0f0;
-  }
-  #map {
-    width: 60%;
-    height: 100%;
-  }
-  /* Optional: styles for station cards */
-  .station-card {
-    background: #fff;
-    padding: 8px;
-    margin-bottom: 8px;
-    border-radius: 4px;
-  }
-</style>
-</head>
-<body>
-<h1 style="text-align:center;">Stations Map & List</h1>
-<button style="margin:10px;" onclick="loadStations()">Show Stations</button>
-<div id="container">
-  <div id="list"></div>
-  <div id="map"></div>
-</div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Public Data Project</title>
+    <link rel="stylesheet" href="styles.css" />
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  </head>
+  
+  <body>
+    <h1 style="text-align: center">Stations Map & List</h1>
+    <button style="margin: 10px" onclick="loadStations()">Show Stations</button>
+    <div id="station-container">
+      <div id="station-content">
+        <div id="list"></div>
+        <div id="map"></div>
+      </div>
+    </div>
 
-<!-- Scripts and Frameworks -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="index.js"></script>
-
-</body>
+    <!-- Scripts and Frameworks -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="index.js"></script>
+  </body>
 </html>

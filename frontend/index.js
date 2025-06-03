@@ -126,6 +126,9 @@ function convertZipCode() {
 }
 
 function loadStations() {
+
+  document.querySelector("#station-container").style.display = "flex";
+
   // Populate list
   const listDiv = document.getElementById("list");
   listDiv.innerHTML = ""; // clear existing
