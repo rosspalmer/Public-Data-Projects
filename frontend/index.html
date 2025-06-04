@@ -3,60 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Data Dashboard</title>
+    <title>Public Data Project</title>
     <link rel="stylesheet" href="styles.css" />
-    <script src="index.js"></script>
-
-    <!-- External Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Chart.js Testing -->
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <!-- Leaflet.js Testing -->
   </head>
+  
   <body>
-    <header>
-      <h1>Data Dashboard</h1>
-    </header>
-
-    <main>
-      <div id="data-container">
-        <!-- Data fields -->
-      </div>
-
-      <div id="charts-container">
-        <canvas id="tempChart"></canvas>
-        <!-- Additional charts can be added here -->
-      </div>
-
-      <!-- saving for now... will probably need a map container at some point, but working on popup at the moment -->
-      <!-- <div id="map-container" style="height: 400px;"> -->
-      <!-- Map Container -->
-      <!-- <h1>Enter Zip Code to View Map</h1>
-        <input type="text" id="zipInput" placeholder="Enter Zip Code">
-        <button id="showStationsButton" onclick="getStationData()">Show Stations</button>
+    <h1 style="text-align: center">Stations Map & List</h1>
+    <button style="margin: 10px" onclick="loadStations()">Show Stations</button>
+    <div id="station-container">
+      <div id="station-content">
+        <div id="list"></div>
         <div id="map"></div>
-      </div> -->
-
-      <div id="station-container" style="height: 400px">
-        <!-- Stations Info Container -->
-        <h3>Enter Zip Code to View Stations Near You</h3>
-        <input type="text" id="zipInput" placeholder="Enter Zip Code" />
-        <button id="showStationsButton" onclick="getStationData()">
-          Show Stations
-        </button>
-
-        <!-- Popup/Modal Wrapper -->
-        <div id="stationsPopup" class="popup-container" style="display: none">
-          <div class="popup-inner">
-            <div class="popup-header">
-              <span>Nearby Weather Stations</span>
-              <button id="closePopupBtn" onclick="closePopup()">&times;</button>
-            </div>
-            <div id="stationCards"></div>
-          </div>
-        </div>
       </div>
-    </main>
+    </div>
+
+    <!-- Scripts and Frameworks -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="index.js"></script>
   </body>
 </html>
